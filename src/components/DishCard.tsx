@@ -16,6 +16,7 @@ interface DishCardProps {
   onToggleImport?: () => void;
   selectable?: boolean;
   showLastCooked?: boolean;
+  compact?: boolean;
 }
 
 export const DishCard: React.FC<DishCardProps> = ({
@@ -29,6 +30,7 @@ export const DishCard: React.FC<DishCardProps> = ({
   onToggleImport,
   selectable = false,
   showLastCooked = false,
+  compact = isSuggestionView,
 }) => {
   const getTypeBadge = () => {
     switch (dish.type) {
@@ -87,6 +89,7 @@ export const DishCard: React.FC<DishCardProps> = ({
       onPress={onPress || onToggleImport}
       style={[
         styles.card,
+        compact && styles.compactCard,
         isGreenHighlight && styles.greenCard,
         isSelected && styles.selectedCard,
       ]}
@@ -96,7 +99,7 @@ export const DishCard: React.FC<DishCardProps> = ({
           <View style={styles.checkboxContainer}>
             <Ionicons
               name={isSelected ? 'checkbox' : 'square-outline'}
-              size={22}
+              size={compact ? 18 : 22}
               color={isSelected ? colors.primary : colors.textMuted}
             />
           </View>
@@ -104,36 +107,59 @@ export const DishCard: React.FC<DishCardProps> = ({
 
         <View style={styles.mainInfo}>
           <View style={styles.titleRow}>
-            <Text style={[styles.name, isGreenHighlight && styles.greenName]} numberOfLines={2}>
+            <Text
+              style={[
+                styles.name,
+                compact && styles.compactName,
+                isGreenHighlight && styles.greenName,
+              ]}
+              numberOfLines={1}
+            >
               {dish.name}
             </Text>
             {isGreenHighlight && (
-              <View style={styles.greenCheckBadge}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.addedGreenText} />
-                <Text style={styles.greenCheckText}>Dans mes plats</Text>
+              <View style={[styles.greenCheckBadge, compact && styles.compactGreenCheckBadge]}>
+                <Ionicons name="checkmark-circle" size={compact ? 13 : 15} color={colors.addedGreenText} />
+                <Text style={[styles.greenCheckText, compact && styles.compactGreenCheckText]}>
+                  Dans mes plats
+                </Text>
               </View>
             )}
           </View>
 
           {dish.description ? (
-            <Text style={styles.description} numberOfLines={2}>
+            <Text
+              style={[styles.description, compact && styles.compactDescription]}
+              numberOfLines={1}
+            >
               {dish.description}
             </Text>
           ) : null}
 
           {/* Badges Row */}
-          <View style={styles.badgesRow}>
-            <View style={[styles.badge, { backgroundColor: typeBadge.bg }]}>
-              <Ionicons name={typeBadge.icon as any} size={12} color={typeBadge.color} style={{ marginRight: 4 }} />
-              <Text style={[styles.badgeText, { color: typeBadge.color }]}>{typeBadge.label}</Text>
+          <View style={[styles.badgesRow, compact && styles.compactBadgesRow]}>
+            <View style={[styles.badge, compact && styles.compactBadge, { backgroundColor: typeBadge.bg }]}>
+              <Ionicons
+                name={typeBadge.icon as any}
+                size={compact ? 10 : 12}
+                color={typeBadge.color}
+                style={{ marginRight: 3 }}
+              />
+              <Text style={[styles.badgeText, compact && styles.compactBadgeText, { color: typeBadge.color }]}>
+                {typeBadge.label}
+              </Text>
             </View>
 
-            <View style={[styles.badge, { backgroundColor: cuisineBadge.bg }]}>
-              <Text style={[styles.badgeText, { color: cuisineBadge.color }]}>{cuisineBadge.label}</Text>
+            <View style={[styles.badge, compact && styles.compactBadge, { backgroundColor: cuisineBadge.bg }]}>
+              <Text style={[styles.badgeText, compact && styles.compactBadgeText, { color: cuisineBadge.color }]}>
+                {cuisineBadge.label}
+              </Text>
             </View>
 
-            <View style={[styles.badge, { backgroundColor: occasionBadge.bg }]}>
-              <Text style={[styles.badgeText, { color: occasionBadge.color }]}>{occasionBadge.label}</Text>
+            <View style={[styles.badge, compact && styles.compactBadge, { backgroundColor: occasionBadge.bg }]}>
+              <Text style={[styles.badgeText, compact && styles.compactBadgeText, { color: occasionBadge.color }]}>
+                {occasionBadge.label}
+              </Text>
             </View>
 
             {/* Date de dernière sélection */}
@@ -141,19 +167,21 @@ export const DishCard: React.FC<DishCardProps> = ({
               <View
                 style={[
                   styles.badge,
+                  compact && styles.compactBadge,
                   styles.lastCookedBadge,
                   lastCookedInfo.isNever && styles.lastCookedBadgeNever,
                 ]}
               >
                 <Ionicons
                   name="calendar-outline"
-                  size={11}
+                  size={compact ? 9 : 11}
                   color={lastCookedInfo.isNever ? '#059669' : colors.textSecondary}
                   style={{ marginRight: 3 }}
                 />
                 <Text
                   style={[
                     styles.badgeText,
+                    compact && styles.compactBadgeText,
                     { color: lastCookedInfo.isNever ? '#059669' : colors.textSecondary },
                   ]}
                 >
@@ -168,21 +196,21 @@ export const DishCard: React.FC<DishCardProps> = ({
         <View style={styles.actionsRow}>
           {onEdit && (
             <TouchableOpacity
-              style={styles.actionIconBtn}
+              style={[styles.actionIconBtn, compact && styles.compactActionIconBtn]}
               onPress={onEdit}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="pencil-outline" size={17} color={colors.textSecondary} />
+              <Ionicons name="pencil-outline" size={compact ? 14 : 17} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
 
           {onDelete && (
             <TouchableOpacity
-              style={styles.actionIconBtn}
+              style={[styles.actionIconBtn, compact && styles.compactActionIconBtn]}
               onPress={onDelete}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="trash-outline" size={17} color={colors.danger} />
+              <Ionicons name="trash-outline" size={compact ? 14 : 17} color={colors.danger} />
             </TouchableOpacity>
           )}
 
@@ -190,6 +218,7 @@ export const DishCard: React.FC<DishCardProps> = ({
             <TouchableOpacity
               style={[
                 styles.actionBtn,
+                compact && styles.compactActionBtn,
                 isGreenHighlight ? styles.actionBtnRemove : styles.actionBtnAdd,
               ]}
               onPress={onToggleImport}
@@ -197,7 +226,7 @@ export const DishCard: React.FC<DishCardProps> = ({
             >
               <Ionicons
                 name={isGreenHighlight ? 'checkmark' : 'add'}
-                size={18}
+                size={compact ? 15 : 18}
                 color={isGreenHighlight ? '#FFFFFF' : colors.primary}
               />
             </TouchableOpacity>
@@ -212,15 +241,21 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+    padding: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.borderLight,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 3,
+    shadowRadius: 2,
     elevation: 1,
+  },
+  compactCard: {
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    marginBottom: 6,
+    borderRadius: 11,
   },
   greenCard: {
     backgroundColor: colors.addedGreenBg,
@@ -235,10 +270,10 @@ const styles = StyleSheet.create({
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   checkboxContainer: {
-    marginRight: 4,
+    marginRight: 2,
   },
   mainInfo: {
     flex: 1,
@@ -247,15 +282,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   name: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text,
     flex: 1,
+  },
+  compactName: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    lineHeight: 17,
   },
   greenName: {
     color: colors.addedGreenText,
@@ -264,38 +303,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#C8E6C9',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 10,
+    gap: 3,
+  },
+  compactGreenCheckBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
   },
   greenCheckText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: colors.addedGreenText,
   },
+  compactGreenCheckText: {
+    fontSize: 9.5,
+  },
   description: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: colors.textSecondary,
-    marginBottom: 8,
-    lineHeight: 17,
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  compactDescription: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: colors.textSecondary,
+    marginBottom: 2,
   },
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
     marginTop: 2,
+  },
+  compactBadgesRow: {
+    gap: 4,
+    marginTop: 1,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
     borderRadius: 6,
   },
+  compactBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
   badgeText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
+  },
+  compactBadgeText: {
+    fontSize: 9.5,
   },
   lastCookedBadge: {
     backgroundColor: '#F3F4F6',
@@ -309,24 +374,34 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     marginLeft: 4,
   },
   actionIconBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.cardAlt,
   },
+  compactActionIconBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
   actionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 2,
+  },
+  compactActionBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
   actionBtnAdd: {
     backgroundColor: colors.primaryLight,

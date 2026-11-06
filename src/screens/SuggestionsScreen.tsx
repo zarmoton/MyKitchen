@@ -104,7 +104,7 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
   const confirmDeleteSuggestion = (sug: Dish) => {
     Alert.alert(
       'Supprimer la suggestion',
-      `Voulez-vous retirer définitivement "${sug.name}" de la liste des suggestions ?`,
+      `Voulez-vous retirer définitivement "${sug.name}" de la base d’idées ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -118,204 +118,180 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Banner info */}
-      <View style={styles.banner}>
-        <View style={styles.bannerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.bannerTitle}>💡 {suggestions.length} Idées de Plats</Text>
-            <Text style={styles.bannerSubtitle}>
-              Spécialités tunisiennes, classiques italiens & cuisine quotidienne
-            </Text>
+      {/* ULTRA-COMPACT TOP CONTROLS (takes minimal vertical height) */}
+      <View style={styles.topControlPanel}>
+        {/* Row 1: Title, Count Pill & Compact Add Button */}
+        <View style={styles.headerRow}>
+          <View style={styles.titleGroup}>
+            <Text style={styles.headerTitle}>💡 Suggestions</Text>
+            <View style={styles.statsPill}>
+              <Text style={styles.statsText}>
+                {suggestions.length} idées • <Text style={styles.statsGreen}>{importedCount} pris</Text>
+              </Text>
+            </View>
           </View>
 
           <TouchableOpacity
-            style={styles.newIdeaBtn}
+            style={styles.compactAddBtn}
             onPress={() => setIsAddModalOpen(true)}
+            activeOpacity={0.7}
           >
-            <Ionicons name="add" size={18} color="#FFFFFF" />
-            <Text style={styles.newIdeaBtnText}>Ajouter</Text>
+            <Ionicons name="add" size={15} color="#FFFFFF" />
+            <Text style={styles.compactAddBtnText}>Ajouter</Text>
           </TouchableOpacity>
-
-          <View style={styles.countBadge}>
-            <Text style={styles.countNumber}>{importedCount}</Text>
-            <Text style={styles.countLabel}>dans mes plats</Text>
-          </View>
         </View>
 
-        <Text style={styles.bannerNote}>
-          👉 Appuyez sur une idée pour l’ajouter à vos plats. La ligne deviendra{' '}
-          <Text style={{ color: colors.addedGreenText, fontWeight: '700' }}>verte</Text> !
-        </Text>
-      </View>
+        {/* Row 2: Sleek compact Search Bar */}
+        <View style={styles.searchRow}>
+          <Ionicons name="search-outline" size={15} color={colors.textSecondary} style={{ marginRight: 6 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher couscous, pâtes, poisson, bœuf..."
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
+            clearButtonMode="while-editing"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle" size={15} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
 
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Rechercher couscous, spaghetti, poisson, brick..."
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-          clearButtonMode="while-editing"
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Filter Horizontal Scroll */}
-      <View style={styles.filtersWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {/* Cuisine Filters - SANS DRAPEAU */}
+        {/* Row 3: Horizontal Mini Filters */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          {/* All */}
           <TouchableOpacity
-            style={[styles.filterChip, selectedCuisine === 'all' && styles.filterChipActive]}
-            onPress={() => setSelectedCuisine('all')}
-          >
-            <Text style={[styles.filterChipText, selectedCuisine === 'all' && styles.filterChipTextActive]}>
-              Toutes cuisines ({suggestions.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, selectedCuisine === 'tunisien' && styles.filterChipActiveTunisien]}
-            onPress={() => setSelectedCuisine(selectedCuisine === 'tunisien' ? 'all' : 'tunisien')}
+            style={[
+              styles.miniChip,
+              selectedCuisine === 'all' && selectedOccasion === 'all' && statusFilter === 'all' && styles.miniChipActive,
+            ]}
+            onPress={() => {
+              setSelectedCuisine('all');
+              setSelectedOccasion('all');
+              setStatusFilter('all');
+            }}
           >
             <Text
               style={[
-                styles.filterChipText,
-                selectedCuisine === 'tunisien' && styles.filterChipTextActiveTunisien,
+                styles.miniChipText,
+                selectedCuisine === 'all' && selectedOccasion === 'all' && statusFilter === 'all' && styles.miniChipTextActive,
               ]}
             >
+              Toutes ({suggestions.length})
+            </Text>
+          </TouchableOpacity>
+
+          {/* New / Not yet imported */}
+          <TouchableOpacity
+            style={[styles.miniChip, statusFilter === 'not_imported' && styles.miniChipActive]}
+            onPress={() => setStatusFilter(statusFilter === 'not_imported' ? 'all' : 'not_imported')}
+          >
+            <Text style={[styles.miniChipText, statusFilter === 'not_imported' && styles.miniChipTextActive]}>
+              ✨ À découvrir ({suggestions.length - importedCount})
+            </Text>
+          </TouchableOpacity>
+
+          {/* Already taken */}
+          <TouchableOpacity
+            style={[styles.miniChip, statusFilter === 'imported' && styles.miniChipActiveGreen]}
+            onPress={() => setStatusFilter(statusFilter === 'imported' ? 'all' : 'imported')}
+          >
+            <Text style={[styles.miniChipText, statusFilter === 'imported' && styles.miniChipTextActiveGreen]}>
+              ✓ Déjà pris ({importedCount})
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.miniDivider} />
+
+          {/* Cuisines */}
+          <TouchableOpacity
+            style={[styles.miniChip, selectedCuisine === 'tunisien' && styles.miniChipActiveTunisien]}
+            onPress={() => setSelectedCuisine(selectedCuisine === 'tunisien' ? 'all' : 'tunisien')}
+          >
+            <Text style={[styles.miniChipText, selectedCuisine === 'tunisien' && styles.miniChipTextActiveTunisien]}>
               Tunisien
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, selectedCuisine === 'italien' && styles.filterChipActiveItalien]}
+            style={[styles.miniChip, selectedCuisine === 'italien' && styles.miniChipActiveItalien]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'italien' ? 'all' : 'italien')}
           >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedCuisine === 'italien' && styles.filterChipTextActiveItalien,
-              ]}
-            >
+            <Text style={[styles.miniChipText, selectedCuisine === 'italien' && styles.miniChipTextActiveItalien]}>
               Italien
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, selectedCuisine === 'israelien' && styles.filterChipActiveIsraelien]}
+            style={[styles.miniChip, selectedCuisine === 'israelien' && styles.miniChipActiveIsraelien]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'israelien' ? 'all' : 'israelien')}
           >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedCuisine === 'israelien' && styles.filterChipTextActive,
-              ]}
-            >
+            <Text style={[styles.miniChipText, selectedCuisine === 'israelien' && styles.miniChipTextActive]}>
               Israélien
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, selectedCuisine === 'francais' && styles.filterChipActiveFrancais]}
+            style={[styles.miniChip, selectedCuisine === 'francais' && styles.miniChipActiveFrancais]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'francais' ? 'all' : 'francais')}
           >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedCuisine === 'francais' && styles.filterChipTextActive,
-              ]}
-            >
+            <Text style={[styles.miniChipText, selectedCuisine === 'francais' && styles.miniChipTextActive]}>
               Français
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, selectedCuisine === 'classique' && styles.filterChipActive]}
+            style={[styles.miniChip, selectedCuisine === 'classique' && styles.miniChipActive]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'classique' ? 'all' : 'classique')}
           >
-            <Text style={[styles.filterChipText, selectedCuisine === 'classique' && styles.filterChipTextActive]}>
+            <Text style={[styles.miniChipText, selectedCuisine === 'classique' && styles.miniChipTextActive]}>
               Classique
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.filterDivider} />
+          <View style={styles.miniDivider} />
 
-          {/* Occasion Filters */}
+          {/* Occasions */}
           <TouchableOpacity
-            style={[styles.filterChip, selectedOccasion === 'semaine' && styles.filterChipActiveSemaine]}
+            style={[styles.miniChip, selectedOccasion === 'semaine' && styles.miniChipActiveSemaine]}
             onPress={() => setSelectedOccasion(selectedOccasion === 'semaine' ? 'all' : 'semaine')}
           >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedOccasion === 'semaine' && styles.filterChipTextActiveSemaine,
-              ]}
-            >
+            <Text style={[styles.miniChipText, selectedOccasion === 'semaine' && styles.miniChipTextActive]}>
               📅 Semaine
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, selectedOccasion === 'chabbat' && styles.filterChipActiveShabbat]}
+            style={[styles.miniChip, selectedOccasion === 'chabbat' && styles.miniChipActiveShabbat]}
             onPress={() => setSelectedOccasion(selectedOccasion === 'chabbat' ? 'all' : 'chabbat')}
           >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedOccasion === 'chabbat' && styles.filterChipTextActiveShabbat,
-              ]}
-            >
+            <Text style={[styles.miniChipText, selectedOccasion === 'chabbat' && styles.miniChipTextActive]}>
               🕯️ Chabbat
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.filterDivider} />
-
-          {/* Status Filter */}
-          <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'imported' && styles.filterChipActiveGreen]}
-            onPress={() => setStatusFilter(statusFilter === 'imported' ? 'all' : 'imported')}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                statusFilter === 'imported' && styles.filterChipTextActiveGreen,
-              ]}
-            >
-              ✓ Déjà pris ({importedCount})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'not_imported' && styles.filterChipActive]}
-            onPress={() => setStatusFilter(statusFilter === 'not_imported' ? 'all' : 'not_imported')}
-          >
-            <Text style={[styles.filterChipText, statusFilter === 'not_imported' && styles.filterChipTextActive]}>
-              + Nouvelles idées ({suggestions.length - importedCount})
             </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
 
-      {/* List */}
+      {/* List with compact DishCards */}
       <FlatList
         data={filteredSuggestions}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
-        initialNumToRender={15}
-        maxToRenderPerBatch={20}
+        initialNumToRender={20}
+        maxToRenderPerBatch={25}
         windowSize={10}
         renderItem={({ item }) => {
           const imported = isDishImported(item);
           return (
             <DishCard
               dish={item}
+              compact={true}
               isSuggestionView={true}
               isImportedInUserDishes={imported}
               onToggleImport={() => onToggleSuggestion(item)}
@@ -326,24 +302,36 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
         }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="search" size={42} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>Aucune suggestion trouvée</Text>
-            <Text style={styles.emptySubtitle}>Essayez de modifier votre recherche ou vos filtres.</Text>
+            <Ionicons name="search" size={36} color={colors.textMuted} />
+            <Text style={styles.emptyTitle}>Aucune idée trouvée</Text>
+            <Text style={styles.emptySubtitle}>
+              Modifiez votre recherche ou réinitialisez les filtres.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyBtn}
+              onPress={() => {
+                setSearch('');
+                setSelectedCuisine('all');
+                setSelectedOccasion('all');
+                setSelectedType('all');
+                setStatusFilter('all');
+              }}
+            >
+              <Text style={styles.emptyBtnText}>Réinitialiser les filtres</Text>
+            </TouchableOpacity>
           </View>
         }
       />
 
-      {/* Add / Edit Modal for Suggestions */}
+      {/* Add / Edit Suggestion Modal */}
       <AddDishModal
-        visible={isAddModalOpen || !!editingSuggestion}
-        initialDish={editingSuggestion}
-        title={editingSuggestion ? 'Modifier l’idée de suggestion' : 'Ajouter une idée à la base'}
-        subtitle="Cette suggestion apparaîtra dans le catalogue d’idées"
+        visible={isAddModalOpen || editingSuggestion !== null}
+        initialDish={editingSuggestion || undefined}
         onClose={() => {
           setIsAddModalOpen(false);
           setEditingSuggestion(null);
         }}
-        onSave={(dish) => {
+        onSave={dish => {
           if (editingSuggestion) {
             onUpdateSuggestion(dish);
           } else {
@@ -362,194 +350,181 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  banner: {
-    backgroundColor: '#FFF9E6',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  topControlPanel: {
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0E6C8',
+    borderBottomColor: colors.borderLight,
+    gap: 7,
   },
-  bannerRow: {
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  titleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 8,
   },
-  bannerTitle: {
+  headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#7A5200',
-  },
-  bannerSubtitle: {
-    fontSize: 11.5,
-    color: '#8A6D3B',
-    marginTop: 2,
-  },
-  bannerNote: {
-    fontSize: 12,
-    color: '#6B5420',
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#F5E6BF',
-  },
-  newIdeaBtn: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-  },
-  newIdeaBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  countBadge: {
-    backgroundColor: colors.addedGreenBg,
-    borderWidth: 1.5,
-    borderColor: colors.addedGreenBorder,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignItems: 'center',
-  },
-  countNumber: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.addedGreenText,
-  },
-  countLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: colors.addedGreenText,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
     color: colors.text,
-    padding: 0,
   },
-  filtersWrapper: {
-    marginBottom: 6,
+  statsPill: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 10,
   },
-  filterScroll: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    gap: 8,
-  },
-  filterChip: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 18,
-  },
-  filterChipActive: {
-    backgroundColor: colors.text,
-    borderColor: colors.text,
-  },
-  filterChipActiveTunisien: {
-    backgroundColor: colors.badgeTunisien,
-    borderColor: colors.badgeTunisien,
-  },
-  filterChipActiveItalien: {
-    backgroundColor: colors.badgeItalien,
-    borderColor: colors.badgeItalien,
-  },
-  filterChipActiveIsraelien: {
-    backgroundColor: colors.badgeIsraelien,
-    borderColor: colors.badgeIsraelien,
-  },
-  filterChipActiveFrancais: {
-    backgroundColor: colors.badgeFrancais,
-    borderColor: colors.badgeFrancais,
-  },
-  filterChipActiveSemaine: {
-    backgroundColor: colors.semaine,
-    borderColor: colors.semaine,
-  },
-  filterChipActiveShabbat: {
-    backgroundColor: colors.shabbat,
-    borderColor: colors.shabbat,
-  },
-  filterChipActiveGreen: {
-    backgroundColor: colors.addedGreenText,
-    borderColor: colors.addedGreenText,
-  },
-  filterChipText: {
-    fontSize: 12.5,
+  statsText: {
+    fontSize: 11,
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  filterChipTextActive: {
+  statsGreen: {
+    color: colors.addedGreenText,
+    fontWeight: '700',
+  },
+  compactAddBtn: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: 12,
+  },
+  compactAddBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 11.5,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.text,
+    padding: 0,
+  },
+  filterScroll: {
+    gap: 6,
+    paddingVertical: 1,
+  },
+  miniChip: {
+    backgroundColor: colors.cardAlt,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  miniChipActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  miniChipActiveGreen: {
+    backgroundColor: colors.addedGreenBorder,
+    borderColor: colors.addedGreenBorder,
+  },
+  miniChipActiveTunisien: {
+    backgroundColor: colors.badgeTunisien,
+    borderColor: colors.badgeTunisien,
+  },
+  miniChipActiveItalien: {
+    backgroundColor: colors.badgeItalien,
+    borderColor: colors.badgeItalien,
+  },
+  miniChipActiveIsraelien: {
+    backgroundColor: colors.badgeIsraelien,
+    borderColor: colors.badgeIsraelien,
+  },
+  miniChipActiveFrancais: {
+    backgroundColor: colors.badgeFrancais,
+    borderColor: colors.badgeFrancais,
+  },
+  miniChipActiveSemaine: {
+    backgroundColor: colors.semaine,
+    borderColor: colors.semaine,
+  },
+  miniChipActiveShabbat: {
+    backgroundColor: colors.shabbat,
+    borderColor: colors.shabbat,
+  },
+  miniChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  miniChipTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  filterChipTextActiveTunisien: {
+  miniChipTextActiveGreen: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  filterChipTextActiveItalien: {
+  miniChipTextActiveTunisien: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  filterChipTextActiveSemaine: {
+  miniChipTextActiveItalien: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  filterChipTextActiveShabbat: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  filterChipTextActiveGreen: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  filterDivider: {
+  miniDivider: {
     width: 1,
-    height: 20,
-    backgroundColor: colors.border,
-    marginHorizontal: 4,
+    height: 18,
+    backgroundColor: colors.borderLight,
+    marginHorizontal: 2,
     alignSelf: 'center',
   },
   listContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 24,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 50,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    gap: 8,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-    marginTop: 12,
   },
   emptySubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textSecondary,
-    marginTop: 4,
     textAlign: 'center',
-    paddingHorizontal: 30,
+  },
+  emptyBtn: {
+    backgroundColor: colors.cardAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
   },
 });
