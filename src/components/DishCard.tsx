@@ -115,13 +115,14 @@ const DishCardComponent: React.FC<DishCardProps> = ({
           <View style={styles.checkboxContainer}>
             <Ionicons
               name={isSelected ? 'checkbox' : 'square-outline'}
-              size={compact ? 18 : 22}
+              size={compact ? 19 : 22}
               color={isSelected ? colors.primary : colors.textMuted}
             />
           </View>
         )}
 
         <View style={styles.mainInfo}>
+          {/* Title row with full wrapping title so names are NEVER cut off */}
           <View style={styles.titleRow}>
             <Text
               style={[
@@ -129,7 +130,6 @@ const DishCardComponent: React.FC<DishCardProps> = ({
                 compact && styles.compactName,
                 isGreenHighlight && styles.greenName,
               ]}
-              numberOfLines={1}
             >
               {dish.name}
             </Text>
@@ -146,7 +146,7 @@ const DishCardComponent: React.FC<DishCardProps> = ({
           {dish.description ? (
             <Text
               style={[styles.description, compact && styles.compactDescription]}
-              numberOfLines={1}
+              numberOfLines={2}
             >
               {dish.description}
             </Text>
@@ -216,7 +216,7 @@ const DishCardComponent: React.FC<DishCardProps> = ({
               onPress={handleEdit}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="pencil-outline" size={compact ? 14 : 17} color={colors.textSecondary} />
+              <Ionicons name="pencil-outline" size={compact ? 15 : 17} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
 
@@ -226,7 +226,7 @@ const DishCardComponent: React.FC<DishCardProps> = ({
               onPress={handleDelete}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="trash-outline" size={compact ? 14 : 17} color={colors.danger} />
+              <Ionicons name="trash-outline" size={compact ? 15 : 17} color={colors.danger} />
             </TouchableOpacity>
           )}
 
@@ -242,7 +242,7 @@ const DishCardComponent: React.FC<DishCardProps> = ({
             >
               <Ionicons
                 name={isGreenHighlight ? 'checkmark' : 'add'}
-                size={compact ? 15 : 18}
+                size={compact ? 16 : 18}
                 color={isGreenHighlight ? '#FFFFFF' : colors.primary}
               />
             </TouchableOpacity>
@@ -259,8 +259,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: 14,
-    padding: 12,
-    marginBottom: 8,
+    padding: 13,
+    marginBottom: 9,
     borderWidth: 1,
     borderColor: colors.borderLight,
     shadowColor: '#000',
@@ -270,10 +270,10 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   compactCard: {
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    marginBottom: 6,
-    borderRadius: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderRadius: 12,
   },
   greenCard: {
     backgroundColor: colors.addedGreenBg,
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 9,
   },
   checkboxContainer: {
     marginRight: 2,
@@ -298,21 +298,22 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 6,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   name: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
     flex: 1,
+    lineHeight: 20,
   },
   compactName: {
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 17,
+    lineHeight: 18.5,
   },
   greenName: {
     color: colors.addedGreenText,
@@ -325,11 +326,13 @@ const styles = StyleSheet.create({
     paddingVertical: 2.5,
     borderRadius: 10,
     gap: 3,
+    alignSelf: 'flex-start',
+    marginTop: 1,
   },
   compactGreenCheckBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 7,
   },
   greenCheckText: {
     fontSize: 10.5,
@@ -346,20 +349,21 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   compactDescription: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 11.5,
+    lineHeight: 15,
     color: colors.textSecondary,
-    marginBottom: 2,
+    marginTop: 1,
+    marginBottom: 4,
   },
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 5,
-    marginTop: 2,
+    marginTop: 3,
   },
   compactBadgesRow: {
-    gap: 4,
-    marginTop: 1,
+    gap: 4.5,
+    marginTop: 2,
   },
   badge: {
     flexDirection: 'row',
@@ -369,16 +373,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   compactBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
+    paddingHorizontal: 5.5,
+    paddingVertical: 2,
+    borderRadius: 4.5,
   },
   badgeText: {
     fontSize: 10.5,
     fontWeight: '600',
   },
   compactBadgeText: {
-    fontSize: 9.5,
+    fontSize: 10,
   },
   lastCookedBadge: {
     backgroundColor: '#F3F4F6',
@@ -404,9 +408,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardAlt,
   },
   compactActionIconBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
   actionBtn: {
     width: 32,
@@ -417,9 +421,9 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   compactActionBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
   actionBtnAdd: {
     backgroundColor: colors.primaryLight,
