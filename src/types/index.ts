@@ -37,6 +37,8 @@ export interface MealHistoryEntry {
   // Specific Chabbat breakdown
   shabbatVendrediSoir?: Dish[];
   shabbatSamediMidi?: Dish[];
+  vendrediAbsent?: boolean; // Absent / Invité vendredi soir
+  samediAbsent?: boolean;   // Absent / Invité samedi midi
   notes?: string;
 }
 

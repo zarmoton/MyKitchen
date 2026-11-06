@@ -117,8 +117,12 @@ function MainApp() {
       entry.mainDishes?.forEach(d => cookedDishIds.add(d.id));
       entry.sides?.forEach(d => cookedDishIds.add(d.id));
       entry.desserts?.forEach(d => cookedDishIds.add(d.id));
-      entry.shabbatVendrediSoir?.forEach(d => cookedDishIds.add(d.id));
-      entry.shabbatSamediMidi?.forEach(d => cookedDishIds.add(d.id));
+      if (!entry.vendrediAbsent) {
+        entry.shabbatVendrediSoir?.forEach(d => cookedDishIds.add(d.id));
+      }
+      if (!entry.samediAbsent) {
+        entry.shabbatSamediMidi?.forEach(d => cookedDishIds.add(d.id));
+      }
 
       // 3. Update lastCookedDate timestamp on user dishes
       const updatedDishes = userDishes.map(dish => {

@@ -37,9 +37,11 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   const [semaineSide, setSemaineSide] = useState<Dish | null>(null);
   const [semaineDessert, setSemaineDessert] = useState<Dish | null>(null);
 
-  // Chabbat state: separate sets for Friday evening & Saturday lunch per card
+  // Chabbat state: separate sets for Friday evening & Saturday lunch per card, plus absent state
   const [vendrediDishIds, setVendrediDishIds] = useState<Set<string>>(new Set());
   const [samediDishIds, setSamediDishIds] = useState<Set<string>>(new Set());
+  const [isVendrediAbsent, setIsVendrediAbsent] = useState<boolean>(false);
+  const [isSamediAbsent, setIsSamediAbsent] = useState<boolean>(false);
 
   // Watch for prefilledMeal from history
   useEffect(() => {
@@ -50,6 +52,8 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
       setSemaineSide(prefilledMeal.sides?.[0] || null);
       setSemaineDessert(prefilledMeal.desserts?.[0] || null);
     } else {
+      setIsVendrediAbsent(!!prefilledMeal.vendrediAbsent);
+      setIsSamediAbsent(!!prefilledMeal.samediAbsent);
       if (prefilledMeal.shabbatVendrediSoir || prefilledMeal.shabbatSamediMidi) {
         setVendrediDishIds(new Set((prefilledMeal.shabbatVendrediSoir || []).map(d => d.id)));
         setSamediDishIds(new Set((prefilledMeal.shabbatSamediMidi || []).map(d => d.id)));
@@ -138,6 +142,9 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
 
   // Toggle dish in Friday night list
   const toggleVendrediDish = (dishId: string) => {
+    if (isVendrediAbsent) {
+      setIsVendrediAbsent(false);
+    }
     const next = new Set(vendrediDishIds);
     if (next.has(dishId)) {
       next.delete(dishId);
@@ -149,6 +156,9 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
 
   // Toggle dish in Saturday lunch list
   const toggleSamediDish = (dishId: string) => {
+    if (isSamediAbsent) {
+      setIsSamediAbsent(false);
+    }
     const next = new Set(samediDishIds);
     if (next.has(dishId)) {
       next.delete(dishId);
@@ -156,6 +166,22 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
       next.add(dishId);
     }
     setSamediDishIds(next);
+  };
+
+  // Toggle absent state for Friday
+  const handleToggleVendrediAbsent = (absent: boolean) => {
+    setIsVendrediAbsent(absent);
+    if (absent) {
+      setVendrediDishIds(new Set());
+    }
+  };
+
+  // Toggle absent state for Saturday
+  const handleToggleSamediAbsent = (absent: boolean) => {
+    setIsSamediAbsent(absent);
+    if (absent) {
+      setSamediDishIds(new Set());
+    }
   };
 
   // Roll random meal for Semaine (prioritizes least recently cooked)
@@ -240,18 +266,57 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
 
   // Validate Chabbat meal
   const handleValidateChabbatMeal = () => {
-    if (vendrediDishIds.size === 0 && samediDishIds.size === 0) {
+    const isFridayValid = isVendrediAbsent || vendrediDishIds.size > 0;
+    const isSaturdayValid = isSamediAbsent || samediDishIds.size > 0;
+
+    if (!isFridayValid && !isSaturdayValid) {
       Alert.alert(
-        'Aucun plat sélectionné',
-        'Veuillez attribuer au moins un plat pour le Vendredi soir ou le Samedi midi sur les cartes ci-dessous.'
+        'Repas de Chabbat incomplet',
+        'Un repas de Chabbat doit contenir la partie Vendredi soir et Samedi midi.\n\nVeuillez choisir des plats ou cocher « Absent » pour chaque service.'
+      );
+      return;
+    }
+
+    if (!isFridayValid) {
+      Alert.alert(
+        'Vendredi soir incomplet',
+        'Veuillez sélectionner au moins un plat pour le Vendredi soir, ou cocher « 🚗 Absent ».'
+      );
+      return;
+    }
+
+    if (!isSaturdayValid) {
+      Alert.alert(
+        'Samedi midi incomplet',
+        'Veuillez sélectionner au moins un plat pour le Samedi midi, ou cocher « 🚗 Absent ».'
+      );
+      return;
+    }
+
+    if (isVendrediAbsent && isSamediAbsent) {
+      Alert.alert(
+        'Absents tout le Chabbat ?',
+        'Vous avez indiqué être absent de la maison pour le Vendredi soir et le Samedi midi. Souhaitez-vous enregistrer ce Chabbat extérieur dans l’historique ?',
+        [
+          { text: 'Modifier', style: 'cancel' },
+          { text: 'Oui, enregistrer', onPress: () => finalizeChabbatMeal([], []) },
+        ]
       );
       return;
     }
 
     const dishesMap = new Map(userDishes.map(d => [d.id, d]));
-    const vendrediDishes = Array.from(vendrediDishIds).map(id => dishesMap.get(id)!).filter(Boolean);
-    const samediDishes = Array.from(samediDishIds).map(id => dishesMap.get(id)!).filter(Boolean);
+    const vendrediDishes = isVendrediAbsent
+      ? []
+      : Array.from(vendrediDishIds).map(id => dishesMap.get(id)!).filter(Boolean);
+    const samediDishes = isSamediAbsent
+      ? []
+      : Array.from(samediDishIds).map(id => dishesMap.get(id)!).filter(Boolean);
 
+    finalizeChabbatMeal(vendrediDishes, samediDishes);
+  };
+
+  const finalizeChabbatMeal = (vendrediDishes: Dish[], samediDishes: Dish[]) => {
     const allDishes = Array.from(new Set([...vendrediDishes, ...samediDishes]));
     const mains = allDishes.filter(d => d.type === 'complet' || d.type === 'principal');
     const sides = allDishes.filter(d => d.type === 'accompagnement');
@@ -264,6 +329,8 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
       displayDate: formatDisplayDate(now.toISOString()),
       occasion: 'chabbat',
       shabbatSlot: 'les_deux',
+      vendrediAbsent: isVendrediAbsent,
+      samediAbsent: isSamediAbsent,
       shabbatVendrediSoir: vendrediDishes,
       shabbatSamediMidi: samediDishes,
       mainDishes: mains,
@@ -272,9 +339,23 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
     };
 
     onValidateMeal(entry);
+
+    const summaryLines = [];
+    if (isVendrediAbsent) {
+      summaryLines.push('• Vendredi soir : 🚗 Absent de la maison');
+    } else {
+      summaryLines.push(`• Vendredi soir : ${vendrediDishes.length} plat(s)`);
+    }
+
+    if (isSamediAbsent) {
+      summaryLines.push('• Samedi midi : 🚗 Absent de la maison');
+    } else {
+      summaryLines.push(`• Samedi midi : ${samediDishes.length} plat(s)`);
+    }
+
     Alert.alert(
       '🕯️ Shabbat Shalom ! Festin validé !',
-      `Menu enregistré :\n• Vendredi soir : ${vendrediDishes.length} plat(s)\n• Samedi midi : ${samediDishes.length} plat(s)`,
+      `Menu enregistré :\n${summaryLines.join('\n')}`,
       [
         { text: 'Consulter l’historique', onPress: onNavigateToHistory },
         { text: 'Parfait', style: 'default' },
@@ -283,6 +364,8 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
 
     setVendrediDishIds(new Set());
     setSamediDishIds(new Set());
+    setIsVendrediAbsent(false);
+    setIsSamediAbsent(false);
   };
 
   // Helper component for a Chabbat card with Vendredi & Samedi toggle buttons directly on it
@@ -697,44 +780,93 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
         )}
 
         {/* ==================================================== */}
-        {/* MODE CHABBAT (AVEC CHOIX VENDREDI / SAMEDI SUR CHAQUE CARTE) */}
+        {/* MODE CHABBAT (AVEC CHOIX VENDREDI / SAMEDI ET ABSENT) */}
         {/* ==================================================== */}
         {mealMode === 'chabbat' && (
           <View>
             {/* Banner explaining individual dish assignment */}
             <View style={styles.chabbatBanner}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.chabbatBannerTitle}>👑 Festin de Chabbat</Text>
+                <Text style={styles.chabbatBannerTitle}>👑 Organisation du Chabbat</Text>
                 <Text style={styles.chabbatBannerSubtitle}>
-                  Attribuez directement chaque plat au Vendredi soir, au Samedi midi, ou aux deux !
+                  Attribuez vos plats pour le Vendredi soir et le Samedi midi, ou cochez « Absent » si vous êtes invité(s).
                 </Text>
               </View>
             </View>
 
-            {/* SUMMARY BAR: LIVE COUNT OF VENDREDI & SAMEDI */}
-            {(vendrediDishIds.size > 0 || samediDishIds.size > 0) && (
-              <View style={styles.chabbatSummaryBox}>
-                <View style={styles.chabbatSummaryTop}>
-                  <Text style={styles.chabbatSummaryTitle}>
-                    🍽️ Menu en cours de composition :
-                  </Text>
+            {/* CHABBAT PLANNER & SUMMARY BOX */}
+            <View style={styles.chabbatSummaryBox}>
+              <View style={styles.chabbatSummaryTop}>
+                <Text style={styles.chabbatSummaryTitle}>
+                  📋 Menu du Chabbat :
+                </Text>
+                {(vendrediDishIds.size > 0 || samediDishIds.size > 0 || isVendrediAbsent || isSamediAbsent) && (
                   <TouchableOpacity
                     onPress={() => {
                       setVendrediDishIds(new Set());
                       setSamediDishIds(new Set());
+                      setIsVendrediAbsent(false);
+                      setIsSamediAbsent(false);
                     }}
                   >
                     <Text style={styles.previewResetText}>Tout effacer</Text>
                   </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Vendredi soir row */}
+              <View style={styles.summarySlotBlock}>
+                <View style={styles.summarySlotHeader}>
+                  <Text style={styles.summarySlotTitle}>
+                    🕯️ 1er : Vendredi Soir
+                  </Text>
+                  <View style={styles.absentToggleRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.absentPill,
+                        !isVendrediAbsent && styles.absentPillActiveHome,
+                      ]}
+                      onPress={() => handleToggleVendrediAbsent(false)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.absentPillText,
+                          !isVendrediAbsent && { color: '#FFFFFF', fontWeight: '800' },
+                        ]}
+                      >
+                        🏠 Maison ({vendrediDishIds.size})
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.absentPill,
+                        isVendrediAbsent && styles.absentPillActiveAbsent,
+                      ]}
+                      onPress={() => handleToggleVendrediAbsent(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.absentPillText,
+                          isVendrediAbsent && { color: '#FFFFFF', fontWeight: '800' },
+                        ]}
+                      >
+                        🚗 Absent
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                {/* Vendredi soir row */}
-                <View style={styles.summarySlotBlock}>
-                  <View style={styles.summarySlotHeader}>
-                    <Text style={styles.summarySlotTitle}>
-                      🕯️ Vendredi Soir ({vendrediDishIds.size} plats)
+                {isVendrediAbsent ? (
+                  <View style={styles.absentNoticeBox}>
+                    <Ionicons name="car-outline" size={16} color="#6B7280" />
+                    <Text style={styles.absentNoticeText}>
+                      Absent de la maison (invités / repas extérieur)
                     </Text>
                   </View>
+                ) : (
                   <View style={styles.chabbatSelectedPills}>
                     {userDishes
                       .filter(d => vendrediDishIds.has(d.id))
@@ -749,18 +881,67 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                         </TouchableOpacity>
                       ))}
                     {vendrediDishIds.size === 0 && (
-                      <Text style={styles.emptySlotHint}>Aucun plat assigné au vendredi soir</Text>
+                      <Text style={styles.emptySlotHint}>
+                        Aucun plat sélectionné — choisissez sur les cartes ci-dessous ou cochez Absent
+                      </Text>
                     )}
+                  </View>
+                )}
+              </View>
+
+              {/* Samedi midi row */}
+              <View style={[styles.summarySlotBlock, { marginTop: 12 }]}>
+                <View style={styles.summarySlotHeader}>
+                  <Text style={styles.summarySlotTitle}>
+                    ☀️ 2ème : Samedi Midi
+                  </Text>
+                  <View style={styles.absentToggleRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.absentPill,
+                        !isSamediAbsent && styles.absentPillActiveSaturday,
+                      ]}
+                      onPress={() => handleToggleSamediAbsent(false)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.absentPillText,
+                          !isSamediAbsent && { color: '#FFFFFF', fontWeight: '800' },
+                        ]}
+                      >
+                        🏠 Maison ({samediDishIds.size})
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.absentPill,
+                        isSamediAbsent && styles.absentPillActiveAbsent,
+                      ]}
+                      onPress={() => handleToggleSamediAbsent(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.absentPillText,
+                          isSamediAbsent && { color: '#FFFFFF', fontWeight: '800' },
+                        ]}
+                      >
+                        🚗 Absent
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
-                {/* Samedi midi row */}
-                <View style={styles.summarySlotBlock}>
-                  <View style={styles.summarySlotHeader}>
-                    <Text style={styles.summarySlotTitle}>
-                      ☀️ Samedi Midi ({samediDishIds.size} plats)
+                {isSamediAbsent ? (
+                  <View style={styles.absentNoticeBox}>
+                    <Ionicons name="car-outline" size={16} color="#6B7280" />
+                    <Text style={styles.absentNoticeText}>
+                      Absent de la maison (invités / repas extérieur)
                     </Text>
                   </View>
+                ) : (
                   <View style={styles.chabbatSelectedPills}>
                     {userDishes
                       .filter(d => samediDishIds.has(d.id))
@@ -775,19 +956,25 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                         </TouchableOpacity>
                       ))}
                     {samediDishIds.size === 0 && (
-                      <Text style={styles.emptySlotHint}>Aucun plat assigné au samedi midi</Text>
+                      <Text style={styles.emptySlotHint}>
+                        Aucun plat sélectionné — choisissez sur les cartes ci-dessous ou cochez Absent
+                      </Text>
                     )}
                   </View>
-                </View>
-
-                <TouchableOpacity style={styles.validateChabbatBtn} onPress={handleValidateChabbatMeal}>
-                  <Ionicons name="checkmark-done-circle" size={20} color="#FFFFFF" />
-                  <Text style={styles.validateChabbatBtnText}>
-                    Valider le festin de Chabbat
-                  </Text>
-                </TouchableOpacity>
+                )}
               </View>
-            )}
+
+              <TouchableOpacity
+                style={styles.validateChabbatBtn}
+                onPress={handleValidateChabbatMeal}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="checkmark-done-circle" size={20} color="#FFFFFF" />
+                <Text style={styles.validateChabbatBtnText}>
+                  Valider le festin de Chabbat
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* SECTION: PLATS PRINCIPAUX DE CHABBAT */}
             <View style={styles.sectionHeaderRow}>
@@ -1216,12 +1403,61 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   summarySlotHeader: {
-    marginBottom: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   summarySlotTitle: {
     fontSize: 12.5,
     fontWeight: '700',
     color: colors.text,
+  },
+  absentToggleRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  absentPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: colors.cardAlt,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  absentPillActiveHome: {
+    backgroundColor: colors.shabbat,
+    borderColor: colors.shabbat,
+  },
+  absentPillActiveSaturday: {
+    backgroundColor: '#D97706',
+    borderColor: '#D97706',
+  },
+  absentPillActiveAbsent: {
+    backgroundColor: '#6B7280',
+    borderColor: '#6B7280',
+  },
+  absentPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  absentNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  absentNoticeText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    fontWeight: '500',
   },
   chabbatSelectedPills: {
     flexDirection: 'row',

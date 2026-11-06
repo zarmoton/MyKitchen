@@ -37,37 +37,37 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
     if (isChabbat) {
       const lines = [`🕯️ Menu de Chabbat (${item.displayDate}) :`];
 
-      const vendrediDishes = item.shabbatVendrediSoir || [];
-      const samediDishes = item.shabbatSamediMidi || [];
-
-      if (vendrediDishes.length > 0 || samediDishes.length > 0) {
-        if (vendrediDishes.length > 0) {
-          lines.push('\n🕯️ VENDREDI SOIR :');
-          vendrediDishes.forEach(d => {
-            lines.push(`• ${d.name} (${getCuisineLabel(d.cuisine)})`);
-          });
-        }
-
-        if (samediDishes.length > 0) {
-          lines.push('\n☀️ SAMEDI MIDI :');
-          samediDishes.forEach(d => {
-            lines.push(`• ${d.name} (${getCuisineLabel(d.cuisine)})`);
-          });
-        }
+      // 1er : Vendredi Soir
+      lines.push('\n🕯️ 1ER : VENDREDI SOIR :');
+      if (item.vendrediAbsent) {
+        lines.push('• 🚗 Absent de la maison (invités / sortie)');
+      } else if (item.shabbatVendrediSoir && item.shabbatVendrediSoir.length > 0) {
+        item.shabbatVendrediSoir.forEach(d => {
+          lines.push(`• ${d.name} (${getCuisineLabel(d.cuisine)})`);
+        });
+      } else if (item.mainDishes && item.mainDishes.length > 0) {
+        item.mainDishes.forEach(d => lines.push(`• ${d.name}`));
       } else {
-        // Fallback for older entries
-        if (item.mainDishes?.length) {
-          lines.push('\nPlats :');
-          item.mainDishes.forEach(d => lines.push(`• ${d.name}`));
-        }
-        if (item.sides?.length) {
-          lines.push('\nAccompagnements :');
-          item.sides.forEach(s => lines.push(`• ${s.name}`));
-        }
-        if (item.desserts?.length) {
-          lines.push('\nDesserts :');
-          item.desserts.forEach(des => lines.push(`• ${des.name}`));
-        }
+        lines.push('• Aucun plat spécifié');
+      }
+
+      // 2ème : Samedi Midi
+      lines.push('\n☀️ 2ÈME : SAMEDI MIDI :');
+      if (item.samediAbsent) {
+        lines.push('• 🚗 Absent de la maison (invités / sortie)');
+      } else if (item.shabbatSamediMidi && item.shabbatSamediMidi.length > 0) {
+        item.shabbatSamediMidi.forEach(d => {
+          lines.push(`• ${d.name} (${getCuisineLabel(d.cuisine)})`);
+        });
+      } else if (item.sides && item.sides.length > 0) {
+        item.sides.forEach(s => lines.push(`• ${s.name}`));
+      } else {
+        lines.push('• Aucun plat spécifié');
+      }
+
+      if (item.desserts && item.desserts.length > 0) {
+        lines.push('\n🍰 Desserts :');
+        item.desserts.forEach(des => lines.push(`• ${des.name}`));
       }
 
       lines.push('\n✨ Shabbat Shalom !');
@@ -163,13 +163,19 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
           <Text style={styles.subtitle}>Ce qui a été cuisiné à la maison</Text>
         </View>
 
-        {/* Filter Pills */}
+        {/* Filter Pills with explicit pure white contrast when active */}
         <View style={styles.filterRow}>
           <TouchableOpacity
             style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
             onPress={() => setFilter('all')}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+            <Text
+              style={[
+                styles.filterText,
+                filter === 'all' && { color: '#FFFFFF', fontWeight: '800' },
+              ]}
+            >
               Tous ({history.length})
             </Text>
           </TouchableOpacity>
@@ -177,8 +183,14 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
           <TouchableOpacity
             style={[styles.filterBtn, filter === 'semaine' && styles.filterBtnActiveSemaine]}
             onPress={() => setFilter('semaine')}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.filterText, filter === 'semaine' && styles.filterTextActive]}>
+            <Text
+              style={[
+                styles.filterText,
+                filter === 'semaine' && { color: '#FFFFFF', fontWeight: '800' },
+              ]}
+            >
               📅 Semaine
             </Text>
           </TouchableOpacity>
@@ -186,8 +198,14 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
           <TouchableOpacity
             style={[styles.filterBtn, filter === 'chabbat' && styles.filterBtnActiveShabbat]}
             onPress={() => setFilter('chabbat')}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.filterText, filter === 'chabbat' && styles.filterTextActive]}>
+            <Text
+              style={[
+                styles.filterText,
+                filter === 'chabbat' && { color: '#FFFFFF', fontWeight: '800' },
+              ]}
+            >
               🕯️ Chabbat
             </Text>
           </TouchableOpacity>
@@ -201,9 +219,9 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
           const isChabbat = item.occasion === 'chabbat';
-          const hasVendredi = item.shabbatVendrediSoir && item.shabbatVendrediSoir.length > 0;
-          const hasSamedi = item.shabbatSamediMidi && item.shabbatSamediMidi.length > 0;
-          const isDetailedChabbat = isChabbat && (hasVendredi || hasSamedi);
+          const hasVendrediDishes = item.shabbatVendrediSoir && item.shabbatVendrediSoir.length > 0;
+          const hasSamediDishes = item.shabbatSamediMidi && item.shabbatSamediMidi.length > 0;
+          const isDetailedChabbat = isChabbat && (hasVendrediDishes || hasSamediDishes || item.vendrediAbsent || item.samediAbsent);
 
           return (
             <View style={[styles.historyCard, isChabbat && styles.historyCardChabbat]}>
@@ -214,13 +232,13 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
                   <View
                     style={[
                       styles.occasionBadge,
-                      isChabbat ? styles.occasionBadgeChabbat : styles.occasionBadgeSemaine,
+                      isChabbat ? { backgroundColor: '#EDE9FE' } : { backgroundColor: '#FFF3E0' },
                     ]}
                   >
                     <Text
                       style={[
                         styles.occasionBadgeText,
-                        isChabbat ? styles.occasionBadgeTextChabbat : styles.occasionBadgeTextSemaine,
+                        isChabbat ? { color: '#5B21B6', fontWeight: '800' } : { color: '#C2410C', fontWeight: '800' },
                       ]}
                     >
                       {isChabbat ? '🕯️ Chabbat' : '📅 Semaine'}
@@ -241,58 +259,80 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
                 {isDetailedChabbat ? (
                   <>
                     {/* 1st: Vendredi Soir Section */}
-                    {hasVendredi && (
-                      <View style={styles.chabbatSection}>
-                        <View style={styles.vendrediSectionHeader}>
-                          <Ionicons name="flame" size={15} color="#D97706" />
-                          <Text style={styles.vendrediSectionTitle}>1er : Vendredi Soir</Text>
-                          <View style={styles.sectionBadge}>
-                            <Text style={styles.sectionBadgeText}>
-                              {item.shabbatVendrediSoir!.length} plat(s)
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={styles.dishGroup}>
-                          {item.shabbatVendrediSoir!.map((dish, idx) => renderDishRow(dish, idx))}
+                    <View style={styles.chabbatSection}>
+                      <View style={styles.vendrediSectionHeader}>
+                        <Ionicons name="flame" size={15} color="#D97706" />
+                        <Text style={styles.vendrediSectionTitle}>1er : Vendredi Soir</Text>
+                        <View style={styles.sectionBadge}>
+                          <Text style={styles.sectionBadgeText}>
+                            {item.vendrediAbsent
+                              ? 'Absent'
+                              : `${(item.shabbatVendrediSoir || []).length} plat(s)`}
+                          </Text>
                         </View>
                       </View>
-                    )}
+
+                      {item.vendrediAbsent ? (
+                        <View style={styles.absentRow}>
+                          <Ionicons name="car-outline" size={16} color="#6B7280" />
+                          <Text style={styles.absentText}>
+                            Absent de la maison (invités / repas extérieur)
+                          </Text>
+                        </View>
+                      ) : (item.shabbatVendrediSoir && item.shabbatVendrediSoir.length > 0) ? (
+                        <View style={styles.dishGroup}>
+                          {item.shabbatVendrediSoir.map((dish, idx) => renderDishRow(dish, idx))}
+                        </View>
+                      ) : (
+                        <Text style={styles.emptySlotHintText}>Aucun plat renseigné</Text>
+                      )}
+                    </View>
 
                     {/* 2nd: Samedi Midi Section */}
-                    {hasSamedi && (
-                      <View style={[styles.chabbatSection, styles.samediSectionMargin]}>
-                        <View style={styles.samediSectionHeader}>
-                          <Ionicons name="sunny" size={15} color="#B45309" />
-                          <Text style={styles.samediSectionTitle}>2ème : Samedi Midi</Text>
-                          <View style={styles.sectionBadge}>
-                            <Text style={styles.sectionBadgeText}>
-                              {item.shabbatSamediMidi!.length} plat(s)
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={styles.dishGroup}>
-                          {item.shabbatSamediMidi!.map((dish, idx) => renderDishRow(dish, idx))}
+                    <View style={[styles.chabbatSection, styles.samediSectionMargin]}>
+                      <View style={styles.samediSectionHeader}>
+                        <Ionicons name="sunny" size={15} color="#B45309" />
+                        <Text style={styles.samediSectionTitle}>2ème : Samedi Midi</Text>
+                        <View style={styles.sectionBadge}>
+                          <Text style={styles.sectionBadgeText}>
+                            {item.samediAbsent
+                              ? 'Absent'
+                              : `${(item.shabbatSamediMidi || []).length} plat(s)`}
+                          </Text>
                         </View>
                       </View>
-                    )}
+
+                      {item.samediAbsent ? (
+                        <View style={styles.absentRow}>
+                          <Ionicons name="car-outline" size={16} color="#6B7280" />
+                          <Text style={styles.absentText}>
+                            Absent de la maison (invités / repas extérieur)
+                          </Text>
+                        </View>
+                      ) : (item.shabbatSamediMidi && item.shabbatSamediMidi.length > 0) ? (
+                        <View style={styles.dishGroup}>
+                          {item.shabbatSamediMidi.map((dish, idx) => renderDishRow(dish, idx))}
+                        </View>
+                      ) : (
+                        <Text style={styles.emptySlotHintText}>Aucun plat renseigné</Text>
+                      )}
+                    </View>
                   </>
                 ) : (
                   <>
-                    {/* Main dishes */}
+                    {/* Standard Semaine or legacy format */}
                     {item.mainDishes && item.mainDishes.length > 0 && (
                       <View style={styles.dishGroup}>
                         {item.mainDishes.map((dish, idx) => renderDishRow(dish, idx))}
                       </View>
                     )}
 
-                    {/* Sides */}
                     {item.sides && item.sides.length > 0 && (
                       <View style={styles.dishGroup}>
                         {item.sides.map((side, idx) => renderDishRow(side, idx))}
                       </View>
                     )}
 
-                    {/* Desserts */}
                     {item.desserts && item.desserts.length > 0 && (
                       <View style={styles.dishGroup}>
                         {item.desserts.map((dessert, idx) => renderDishRow(dessert, idx))}
@@ -377,7 +417,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardAlt,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 7,
     borderRadius: 18,
   },
@@ -397,10 +437,6 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  filterTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: 16,
@@ -449,21 +485,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
   },
-  occasionBadgeSemaine: {
-    backgroundColor: colors.semaineLight,
-  },
-  occasionBadgeChabbat: {
-    backgroundColor: colors.shabbatLight,
-  },
   occasionBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-  },
-  occasionBadgeTextSemaine: {
-    color: colors.semaine,
-  },
-  occasionBadgeTextChabbat: {
-    color: colors.shabbat,
   },
   itemsContainer: {
     gap: 10,
@@ -518,6 +542,27 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '600',
     color: colors.textSecondary,
+  },
+  absentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  absentText: {
+    fontSize: 12.5,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    fontWeight: '500',
+  },
+  emptySlotHintText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    paddingVertical: 4,
   },
   cardActionsRow: {
     flexDirection: 'row',

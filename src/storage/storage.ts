@@ -115,7 +115,16 @@ export const getSuggestions = async (): Promise<Dish[]> => {
       await AsyncStorage.setItem(STORAGE_KEYS.SUGGESTIONS, JSON.stringify(SUGGESTIONS_DATABASE));
       return SUGGESTIONS_DATABASE;
     }
-    return JSON.parse(raw);
+    const stored: Dish[] = JSON.parse(raw);
+    // Auto-merge new additions from SUGGESTIONS_DATABASE while keeping user custom suggestions
+    const storedIds = new Set(stored.map(s => s.id));
+    const newItems = SUGGESTIONS_DATABASE.filter(s => !storedIds.has(s.id));
+    if (newItems.length > 0) {
+      const merged = [...stored, ...newItems];
+      await AsyncStorage.setItem(STORAGE_KEYS.SUGGESTIONS, JSON.stringify(merged));
+      return merged;
+    }
+    return stored;
   } catch (error) {
     console.error('Error loading suggestions:', error);
     return SUGGESTIONS_DATABASE;
