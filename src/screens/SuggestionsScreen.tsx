@@ -7,27 +7,38 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Dish, CuisineType, OccasionType, DishType } from '../types';
-import { SUGGESTIONS_DATABASE } from '../data/suggestionsDatabase';
 import { DishCard } from '../components/DishCard';
+import { AddDishModal } from '../components/AddDishModal';
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SuggestionsScreenProps {
+  suggestions: Dish[];
   userDishes: Dish[];
   onToggleSuggestion: (suggestion: Dish) => void;
+  onAddSuggestion: (suggestion: Dish) => void;
+  onUpdateSuggestion: (suggestion: Dish) => void;
+  onDeleteSuggestion: (suggestionId: string) => void;
 }
 
 export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
+  suggestions,
   userDishes,
   onToggleSuggestion,
+  onAddSuggestion,
+  onUpdateSuggestion,
+  onDeleteSuggestion,
 }) => {
   const [search, setSearch] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState<string>('all');
   const [selectedOccasion, setSelectedOccasion] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'imported' | 'not_imported'>('all');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingSuggestion, setEditingSuggestion] = useState<Dish | null>(null);
 
   // Build a lookup set of imported suggestion IDs and dish names
   const importedSet = useMemo(() => {
@@ -47,7 +58,7 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
 
   // Filtered list
   const filteredSuggestions = useMemo(() => {
-    return SUGGESTIONS_DATABASE.filter(item => {
+    return suggestions.filter(item => {
       // Search
       if (search.trim()) {
         const query = search.toLowerCase();
@@ -83,12 +94,27 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
 
       return true;
     });
-  }, [search, selectedCuisine, selectedOccasion, selectedType, statusFilter, importedSet]);
+  }, [suggestions, search, selectedCuisine, selectedOccasion, selectedType, statusFilter, importedSet]);
 
   // Statistics
   const importedCount = useMemo(() => {
-    return SUGGESTIONS_DATABASE.filter(d => isDishImported(d)).length;
-  }, [importedSet]);
+    return suggestions.filter(d => isDishImported(d)).length;
+  }, [suggestions, importedSet]);
+
+  const confirmDeleteSuggestion = (sug: Dish) => {
+    Alert.alert(
+      'Supprimer la suggestion',
+      `Voulez-vous retirer définitivement "${sug.name}" de la liste des suggestions ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => onDeleteSuggestion(sug.id),
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -96,11 +122,20 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
       <View style={styles.banner}>
         <View style={styles.bannerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.bannerTitle}>💡 {SUGGESTIONS_DATABASE.length} Idées de Plats</Text>
+            <Text style={styles.bannerTitle}>💡 {suggestions.length} Idées de Plats</Text>
             <Text style={styles.bannerSubtitle}>
               Spécialités tunisiennes, classiques italiens & cuisine quotidienne
             </Text>
           </View>
+
+          <TouchableOpacity
+            style={styles.newIdeaBtn}
+            onPress={() => setIsAddModalOpen(true)}
+          >
+            <Ionicons name="add" size={18} color="#FFFFFF" />
+            <Text style={styles.newIdeaBtnText}>Ajouter</Text>
+          </TouchableOpacity>
+
           <View style={styles.countBadge}>
             <Text style={styles.countNumber}>{importedCount}</Text>
             <Text style={styles.countLabel}>dans mes plats</Text>
@@ -134,13 +169,13 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
       {/* Filter Horizontal Scroll */}
       <View style={styles.filtersWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {/* Cuisine Filters */}
+          {/* Cuisine Filters - SANS DRAPEAU */}
           <TouchableOpacity
             style={[styles.filterChip, selectedCuisine === 'all' && styles.filterChipActive]}
             onPress={() => setSelectedCuisine('all')}
           >
             <Text style={[styles.filterChipText, selectedCuisine === 'all' && styles.filterChipTextActive]}>
-              Toutes cuisines ({SUGGESTIONS_DATABASE.length})
+              Toutes cuisines ({suggestions.length})
             </Text>
           </TouchableOpacity>
 
@@ -154,7 +189,7 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
                 selectedCuisine === 'tunisien' && styles.filterChipTextActiveTunisien,
               ]}
             >
-              🇹🇳 Tunisien
+              Tunisien
             </Text>
           </TouchableOpacity>
 
@@ -168,7 +203,7 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
                 selectedCuisine === 'italien' && styles.filterChipTextActiveItalien,
               ]}
             >
-              🇮🇹 Italien
+              Italien
             </Text>
           </TouchableOpacity>
 
@@ -177,7 +212,7 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
             onPress={() => setSelectedCuisine(selectedCuisine === 'classique' ? 'all' : 'classique')}
           >
             <Text style={[styles.filterChipText, selectedCuisine === 'classique' && styles.filterChipTextActive]}>
-              🍽️ Classique
+              Classique
             </Text>
           </TouchableOpacity>
 
@@ -234,7 +269,7 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
             onPress={() => setStatusFilter(statusFilter === 'not_imported' ? 'all' : 'not_imported')}
           >
             <Text style={[styles.filterChipText, statusFilter === 'not_imported' && styles.filterChipTextActive]}>
-              + Nouvelles idées ({SUGGESTIONS_DATABASE.length - importedCount})
+              + Nouvelles idées ({suggestions.length - importedCount})
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -256,6 +291,8 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
               isSuggestionView={true}
               isImportedInUserDishes={imported}
               onToggleImport={() => onToggleSuggestion(item)}
+              onEdit={() => setEditingSuggestion(item)}
+              onDelete={() => confirmDeleteSuggestion(item)}
             />
           );
         }}
@@ -266,6 +303,27 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
             <Text style={styles.emptySubtitle}>Essayez de modifier votre recherche ou vos filtres.</Text>
           </View>
         }
+      />
+
+      {/* Add / Edit Modal for Suggestions */}
+      <AddDishModal
+        visible={isAddModalOpen || !!editingSuggestion}
+        initialDish={editingSuggestion}
+        title={editingSuggestion ? 'Modifier l’idée de suggestion' : 'Ajouter une idée à la base'}
+        subtitle="Cette suggestion apparaîtra dans le catalogue d’idées"
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingSuggestion(null);
+        }}
+        onSave={(dish) => {
+          if (editingSuggestion) {
+            onUpdateSuggestion(dish);
+          } else {
+            onAddSuggestion(dish);
+          }
+          setIsAddModalOpen(false);
+          setEditingSuggestion(null);
+        }}
       />
     </View>
   );
@@ -287,7 +345,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   bannerTitle: {
     fontSize: 16,
@@ -295,7 +353,7 @@ const styles = StyleSheet.create({
     color: '#7A5200',
   },
   bannerSubtitle: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#8A6D3B',
     marginTop: 2,
   },
@@ -307,22 +365,36 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F5E6BF',
   },
+  newIdeaBtn: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  newIdeaBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   countBadge: {
     backgroundColor: colors.addedGreenBg,
     borderWidth: 1.5,
     borderColor: colors.addedGreenBorder,
     borderRadius: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     alignItems: 'center',
   },
   countNumber: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: colors.addedGreenText,
   },
   countLabel: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '600',
     color: colors.addedGreenText,
   },
@@ -445,4 +517,3 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
 });
-

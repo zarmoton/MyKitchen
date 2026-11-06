@@ -4,12 +4,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   Platform,
   ActivityIndicator,
   StatusBar as RNStatusBar,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from './src/components/Header';
 import { RepasScreen } from './src/screens/RepasScreen';
 import { PlatsScreen } from './src/screens/PlatsScreen';
@@ -18,7 +18,12 @@ import { HistoriqueScreen } from './src/screens/HistoriqueScreen';
 import {
   getDishes,
   addDish,
+  updateDish,
   removeDish,
+  getSuggestions,
+  addSuggestion,
+  updateSuggestion,
+  deleteSuggestion,
   toggleImportSuggestion,
   getMealHistory,
   addMealToHistory,
@@ -28,9 +33,11 @@ import { Dish, MealHistoryEntry, TabType } from './src/types';
 import { colors } from './src/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function App() {
+function MainApp() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('repas');
   const [userDishes, setUserDishes] = useState<Dish[]>([]);
+  const [suggestions, setSuggestions] = useState<Dish[]>([]);
   const [mealHistory, setMealHistory] = useState<MealHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [prefilledMeal, setPrefilledMeal] = useState<MealHistoryEntry | null>(null);
@@ -39,11 +46,13 @@ export default function App() {
   useEffect(() => {
     const loadAppData = async () => {
       try {
-        const [dishes, history] = await Promise.all([
+        const [dishes, sugs, history] = await Promise.all([
           getDishes(),
+          getSuggestions(),
           getMealHistory(),
         ]);
         setUserDishes(dishes);
+        setSuggestions(sugs);
         setMealHistory(history);
       } catch (err) {
         console.error('Error loading initial data:', err);
@@ -60,9 +69,30 @@ export default function App() {
     setUserDishes(updated);
   }, []);
 
+  const handleUpdateDish = useCallback(async (dish: Dish) => {
+    const updated = await updateDish(dish);
+    setUserDishes(updated);
+  }, []);
+
   const handleDeleteDish = useCallback(async (dishId: string) => {
     const updated = await removeDish(dishId);
     setUserDishes(updated);
+  }, []);
+
+  // Suggestions handlers (Add, Update, Delete, Toggle Import)
+  const handleAddSuggestion = useCallback(async (sug: Dish) => {
+    const updated = await addSuggestion(sug);
+    setSuggestions(updated);
+  }, []);
+
+  const handleUpdateSuggestion = useCallback(async (sug: Dish) => {
+    const updated = await updateSuggestion(sug);
+    setSuggestions(updated);
+  }, []);
+
+  const handleDeleteSuggestion = useCallback(async (sugId: string) => {
+    const updated = await deleteSuggestion(sugId);
+    setSuggestions(updated);
   }, []);
 
   const handleToggleSuggestion = useCallback(async (suggestion: Dish) => {
@@ -95,8 +125,12 @@ export default function App() {
     );
   }
 
+  // Calculate safe bottom padding specifically accounting for Android navigation buttons
+  const dynamicBottomPadding = Math.max(insets.bottom, 12) + (Platform.OS === 'android' ? 18 : 6);
+  const dynamicTopPadding = Math.max(insets.top, Platform.OS === 'android' ? (RNStatusBar.currentHeight || 0) : 0);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: dynamicTopPadding }]}>
       <StatusBar style="dark" />
 
       {/* Main Header */}
@@ -118,6 +152,7 @@ export default function App() {
           <PlatsScreen
             userDishes={userDishes}
             onAddDish={handleAddDish}
+            onUpdateDish={handleUpdateDish}
             onDeleteDish={handleDeleteDish}
             onNavigateToSuggestions={() => setActiveTab('suggestions')}
           />
@@ -125,8 +160,12 @@ export default function App() {
 
         {activeTab === 'suggestions' && (
           <SuggestionsScreen
+            suggestions={suggestions}
             userDishes={userDishes}
             onToggleSuggestion={handleToggleSuggestion}
+            onAddSuggestion={handleAddSuggestion}
+            onUpdateSuggestion={handleUpdateSuggestion}
+            onDeleteSuggestion={handleDeleteSuggestion}
           />
         )}
 
@@ -140,8 +179,8 @@ export default function App() {
         )}
       </View>
 
-      {/* Modern Bottom Navigation Bar */}
-      <View style={styles.tabBar}>
+      {/* Modern Bottom Navigation Bar with Android navigation bar clearance */}
+      <View style={[styles.tabBar, { paddingBottom: dynamicBottomPadding }]}>
         <TouchableOpacity
           style={styles.tabItem}
           onPress={() => setActiveTab('repas')}
@@ -194,7 +233,7 @@ export default function App() {
               color={activeTab === 'suggestions' ? colors.primary : colors.textMuted}
             />
             <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>163</Text>
+              <Text style={styles.tabBadgeText}>{suggestions.length}</Text>
             </View>
           </View>
           <Text
@@ -227,7 +266,15 @@ export default function App() {
           </Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <MainApp />
+    </SafeAreaProvider>
   );
 }
 
@@ -235,7 +282,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.card,
-    paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
   },
   contentContainer: {
     flex: 1,
@@ -258,13 +304,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
-    paddingVertical: 8,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
-    elevation: 8,
+    paddingTop: 10,
+    elevation: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
   },
   tabItem: {
     flex: 1,

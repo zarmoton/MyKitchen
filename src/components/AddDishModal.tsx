@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,14 +19,37 @@ interface AddDishModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (dish: Dish) => void;
+  initialDish?: Dish | null;
+  title?: string;
+  subtitle?: string;
 }
 
-export const AddDishModal: React.FC<AddDishModalProps> = ({ visible, onClose, onSave }) => {
+export const AddDishModal: React.FC<AddDishModalProps> = ({
+  visible,
+  onClose,
+  onSave,
+  initialDish,
+  title,
+  subtitle,
+}) => {
   const [name, setName] = useState('');
   const [type, setType] = useState<DishType>('complet');
   const [occasion, setOccasion] = useState<OccasionType>('semaine');
   const [cuisine, setCuisine] = useState<CuisineType>('classique');
   const [description, setDescription] = useState('');
+
+  // Sync state whenever initialDish changes or modal opens
+  useEffect(() => {
+    if (initialDish) {
+      setName(initialDish.name || '');
+      setType(initialDish.type || 'complet');
+      setOccasion(initialDish.occasion || 'semaine');
+      setCuisine(initialDish.cuisine || 'classique');
+      setDescription(initialDish.description || '');
+    } else {
+      resetForm();
+    }
+  }, [initialDish, visible]);
 
   const resetForm = () => {
     setName('');
@@ -43,21 +66,26 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ visible, onClose, on
       return;
     }
 
-    const newDish: Dish = {
-      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    const dishToSave: Dish = {
+      id: initialDish ? initialDish.id : `dish-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       name: trimmed,
       type,
       occasion,
       cuisine,
       description: description.trim() || undefined,
-      isCustom: true,
-      createdAt: Date.now(),
+      isCustom: initialDish ? initialDish.isCustom : true,
+      sourceSuggestionId: initialDish?.sourceSuggestionId,
+      createdAt: initialDish?.createdAt || Date.now(),
     };
 
-    onSave(newDish);
+    onSave(dishToSave);
     resetForm();
     onClose();
   };
+
+  const isEditing = !!initialDish;
+  const modalTitle = title || (isEditing ? 'Modifier le plat' : 'Ajouter un plat');
+  const modalSubtitle = subtitle || (isEditing ? 'Mettre à jour les informations' : 'À la carte de votre cuisine');
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
@@ -69,8 +97,8 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ visible, onClose, on
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.headerTitle}>Ajouter un plat</Text>
-              <Text style={styles.headerSubtitle}>À la carte de votre maison</Text>
+              <Text style={styles.headerTitle}>{modalTitle}</Text>
+              <Text style={styles.headerSubtitle}>{modalSubtitle}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={colors.textSecondary} />
@@ -88,7 +116,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ visible, onClose, on
               onChangeText={setName}
             />
 
-            {/* Type de plat - Facilité de saisie demandée par l'utilisateur */}
+            {/* Type de plat */}
             <Text style={styles.label}>Nature du plat *</Text>
             <View style={styles.grid2}>
               <TouchableOpacity
@@ -174,13 +202,13 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ visible, onClose, on
               ))}
             </View>
 
-            {/* Cuisine / Origine */}
+            {/* Cuisine / Origine - SANS DRAPEAU */}
             <Text style={styles.label}>Style de cuisine</Text>
             <View style={styles.chipsRow}>
               {[
-                { key: 'tunisien', label: '🇹🇳 Tunisien' },
-                { key: 'italien', label: '🇮🇹 Italien' },
-                { key: 'classique', label: '🍽️ Classique / Familial' },
+                { key: 'tunisien', label: 'Tunisien' },
+                { key: 'italien', label: 'Italien' },
+                { key: 'classique', label: 'Classique / Familial' },
               ].map(item => (
                 <TouchableOpacity
                   key={item.key}
@@ -221,7 +249,9 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ visible, onClose, on
           <View style={styles.footer}>
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
               <Ionicons name="checkmark-sharp" size={20} color="#FFFFFF" />
-              <Text style={styles.saveBtnText}>Enregistrer le plat</Text>
+              <Text style={styles.saveBtnText}>
+                {isEditing ? 'Enregistrer les modifications' : 'Enregistrer le plat'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -382,4 +412,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-

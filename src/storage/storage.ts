@@ -1,12 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Dish, MealHistoryEntry } from '../types';
 import { INITIAL_USER_DISHES } from '../data/defaultDishes';
+import { SUGGESTIONS_DATABASE } from '../data/suggestionsDatabase';
 
 const STORAGE_KEYS = {
   DISHES: '@mykitchen_user_dishes_v2',
   MEAL_HISTORY: '@mykitchen_meal_history_v1',
+  SUGGESTIONS: '@mykitchen_suggestions_v1',
 };
 
+// ==========================================
+// USER DISHES
+// ==========================================
 export const getDishes = async (): Promise<Dish[]> => {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.DISHES);
@@ -37,6 +42,18 @@ export const addDish = async (newDish: Dish): Promise<Dish[]> => {
     return updated;
   } catch (error) {
     console.error('Error adding dish:', error);
+    return [];
+  }
+};
+
+export const updateDish = async (updatedDish: Dish): Promise<Dish[]> => {
+  try {
+    const current = await getDishes();
+    const updated = current.map(d => (d.id === updatedDish.id ? updatedDish : d));
+    await saveDishes(updated);
+    return updated;
+  } catch (error) {
+    console.error('Error updating dish:', error);
     return [];
   }
 };
@@ -88,6 +105,70 @@ export const toggleImportSuggestion = async (suggestion: Dish): Promise<{ dishes
   }
 };
 
+// ==========================================
+// SUGGESTIONS (MUTABLE: ADD, EDIT, DELETE)
+// ==========================================
+export const getSuggestions = async (): Promise<Dish[]> => {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.SUGGESTIONS);
+    if (!raw) {
+      await AsyncStorage.setItem(STORAGE_KEYS.SUGGESTIONS, JSON.stringify(SUGGESTIONS_DATABASE));
+      return SUGGESTIONS_DATABASE;
+    }
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Error loading suggestions:', error);
+    return SUGGESTIONS_DATABASE;
+  }
+};
+
+export const saveSuggestions = async (suggestions: Dish[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.SUGGESTIONS, JSON.stringify(suggestions));
+  } catch (error) {
+    console.error('Error saving suggestions:', error);
+  }
+};
+
+export const addSuggestion = async (newSug: Dish): Promise<Dish[]> => {
+  try {
+    const current = await getSuggestions();
+    const updated = [newSug, ...current];
+    await saveSuggestions(updated);
+    return updated;
+  } catch (error) {
+    console.error('Error adding suggestion:', error);
+    return [];
+  }
+};
+
+export const updateSuggestion = async (updatedSug: Dish): Promise<Dish[]> => {
+  try {
+    const current = await getSuggestions();
+    const updated = current.map(s => (s.id === updatedSug.id ? updatedSug : s));
+    await saveSuggestions(updated);
+    return updated;
+  } catch (error) {
+    console.error('Error updating suggestion:', error);
+    return [];
+  }
+};
+
+export const deleteSuggestion = async (sugId: string): Promise<Dish[]> => {
+  try {
+    const current = await getSuggestions();
+    const updated = current.filter(s => s.id !== sugId);
+    await saveSuggestions(updated);
+    return updated;
+  } catch (error) {
+    console.error('Error deleting suggestion:', error);
+    return [];
+  }
+};
+
+// ==========================================
+// MEAL HISTORY
+// ==========================================
 export const getMealHistory = async (): Promise<MealHistoryEntry[]> => {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEAL_HISTORY);
@@ -130,4 +211,3 @@ export const deleteMealFromHistory = async (entryId: string): Promise<MealHistor
     return [];
   }
 };
-

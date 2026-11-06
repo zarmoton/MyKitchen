@@ -19,7 +19,7 @@ Pour ajouter un plat sans friction :
 - **Accompagnement** (Ex : *Frites maison, Purée à la muscade, Haricots verts, Riz basmati*).
 - **Dessert** (Ex : *Mousse au chocolat, Tiramisu, Makrouds, Salade d'oranges*).
 - Classification par moment : *Semaine*, *Chabbat (Vendredi soir)*, *Chabbat (Samedi midi)*, ou *Les deux*.
-- Classification culturelle : *🇹🇳 Tunisien*, *🇮🇹 Italien*, *🍽️ Classique familial*.
+- Classification culturelle : *Tunisien*, *Italien*, *Classique familial*.
 - **Aucune gestion d'ingrédients ni de recettes fastidieuses** : on va droit au but !
 
 ### 3. 👑 Festin de Chabbat & Multi-Plats

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 interface DishCardProps {
   dish: Dish;
   onPress?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
   isSelected?: boolean;
   isSuggestionView?: boolean;
@@ -18,6 +19,7 @@ interface DishCardProps {
 export const DishCard: React.FC<DishCardProps> = ({
   dish,
   onPress,
+  onEdit,
   onDelete,
   isSelected = false,
   isSuggestionView = false,
@@ -41,11 +43,11 @@ export const DishCard: React.FC<DishCardProps> = ({
   const getCuisineBadge = () => {
     switch (dish.cuisine) {
       case 'tunisien':
-        return { label: '🇹🇳 Tunisien', bg: colors.badgeTunisienBg, color: colors.badgeTunisien };
+        return { label: 'Tunisien', bg: colors.badgeTunisienBg, color: colors.badgeTunisien };
       case 'italien':
-        return { label: '🇮🇹 Italien', bg: colors.badgeItalienBg, color: colors.badgeItalien };
+        return { label: 'Italien', bg: colors.badgeItalienBg, color: colors.badgeItalien };
       case 'classique':
-        return { label: '🍽️ Classique', bg: colors.badgeClassiqueBg, color: colors.badgeClassique };
+        return { label: 'Classique', bg: colors.badgeClassiqueBg, color: colors.badgeClassique };
     }
   };
 
@@ -69,7 +71,6 @@ export const DishCard: React.FC<DishCardProps> = ({
   const occasionBadge = getOccasionBadge();
 
   // In suggestion view: If already imported to "Mes Plats", the line turns green!
-  // (As specifically requested: "une fois integrés à notre liste la ligne deviendra verte")
   const isGreenHighlight = isSuggestionView && isImportedInUserDishes;
 
   return (
@@ -129,31 +130,45 @@ export const DishCard: React.FC<DishCardProps> = ({
           </View>
         </View>
 
-        {/* Action Button */}
-        {isSuggestionView && onToggleImport ? (
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              isGreenHighlight ? styles.actionBtnRemove : styles.actionBtnAdd,
-            ]}
-            onPress={onToggleImport}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name={isGreenHighlight ? 'checkmark' : 'add'}
-              size={18}
-              color={isGreenHighlight ? '#FFFFFF' : colors.primary}
-            />
-          </TouchableOpacity>
-        ) : onDelete ? (
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={onDelete}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        ) : null}
+        {/* Actions Row */}
+        <View style={styles.actionsRow}>
+          {onEdit && (
+            <TouchableOpacity
+              style={styles.actionIconBtn}
+              onPress={onEdit}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="pencil-outline" size={17} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+
+          {onDelete && (
+            <TouchableOpacity
+              style={styles.actionIconBtn}
+              onPress={onDelete}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="trash-outline" size={17} color={colors.danger} />
+            </TouchableOpacity>
+          )}
+
+          {isSuggestionView && onToggleImport && (
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                isGreenHighlight ? styles.actionBtnRemove : styles.actionBtnAdd,
+              ]}
+              onPress={onToggleImport}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={isGreenHighlight ? 'checkmark' : 'add'}
+                size={18}
+                color={isGreenHighlight ? '#FFFFFF' : colors.primary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -248,13 +263,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 4,
+  },
+  actionIconBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.cardAlt,
+  },
   actionBtn: {
     width: 34,
     height: 34,
     borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 6,
+    marginLeft: 2,
   },
   actionBtnAdd: {
     backgroundColor: colors.primaryLight,
@@ -264,9 +293,4 @@ const styles = StyleSheet.create({
   actionBtnRemove: {
     backgroundColor: colors.addedGreenText,
   },
-  deleteBtn: {
-    padding: 6,
-    marginLeft: 4,
-  },
 });
-

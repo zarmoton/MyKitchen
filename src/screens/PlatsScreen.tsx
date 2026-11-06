@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 interface PlatsScreenProps {
   userDishes: Dish[];
   onAddDish: (dish: Dish) => void;
+  onUpdateDish?: (dish: Dish) => void;
   onDeleteDish: (dishId: string) => void;
   onNavigateToSuggestions: () => void;
 }
@@ -25,6 +26,7 @@ interface PlatsScreenProps {
 export const PlatsScreen: React.FC<PlatsScreenProps> = ({
   userDishes,
   onAddDish,
+  onUpdateDish,
   onDeleteDish,
   onNavigateToSuggestions,
 }) => {
@@ -33,6 +35,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedCuisine, setSelectedCuisine] = useState<string>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingDish, setEditingDish] = useState<Dish | null>(null);
 
   // Filtered dishes
   const filteredDishes = useMemo(() => {
@@ -197,7 +200,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
 
           <View style={styles.filterDivider} />
 
-          {/* Cuisine */}
+          {/* Cuisine - SANS DRAPEAU */}
           <TouchableOpacity
             style={[styles.filterChip, selectedCuisine === 'tunisien' && styles.filterChipActiveTunisien]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'tunisien' ? 'all' : 'tunisien')}
@@ -208,7 +211,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
                 selectedCuisine === 'tunisien' && styles.filterChipTextActiveTunisien,
               ]}
             >
-              🇹🇳 Tunisien
+              Tunisien
             </Text>
           </TouchableOpacity>
 
@@ -222,7 +225,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
                 selectedCuisine === 'italien' && styles.filterChipTextActiveItalien,
               ]}
             >
-              🇮🇹 Italien
+              Italien
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -234,14 +237,18 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <DishCard dish={item} onDelete={() => confirmDelete(item)} />
+          <DishCard
+            dish={item}
+            onEdit={() => setEditingDish(item)}
+            onDelete={() => confirmDelete(item)}
+          />
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="restaurant-outline" size={48} color={colors.textMuted} />
             <Text style={styles.emptyTitle}>Aucun plat correspondant</Text>
             <Text style={styles.emptySubtitle}>
-              Vous pouvez ajouter un nouveau plat avec le bouton ci-dessus ou piocher parmi nos 160+ suggestions !
+              Vous pouvez ajouter un nouveau plat avec le bouton ci-dessus ou piocher parmi nos suggestions !
             </Text>
             <TouchableOpacity style={styles.emptyActionBtn} onPress={onNavigateToSuggestions}>
               <Ionicons name="bulb-outline" size={18} color="#FFFFFF" />
@@ -251,11 +258,23 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         }
       />
 
-      {/* Modal Add */}
+      {/* Modal Add / Edit */}
       <AddDishModal
-        visible={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSave={onAddDish}
+        visible={isAddModalOpen || !!editingDish}
+        initialDish={editingDish}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingDish(null);
+        }}
+        onSave={(dish) => {
+          if (editingDish && onUpdateDish) {
+            onUpdateDish(dish);
+          } else {
+            onAddDish(dish);
+          }
+          setIsAddModalOpen(false);
+          setEditingDish(null);
+        }}
       />
     </View>
   );

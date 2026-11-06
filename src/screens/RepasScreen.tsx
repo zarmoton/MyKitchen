@@ -678,7 +678,7 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                         color={isSelected ? colors.shabbat : colors.textMuted}
                       />
                       <Text style={styles.chabbatCardCuisine}>
-                        {dish.cuisine === 'tunisien' ? '🇹🇳' : dish.cuisine === 'italien' ? '🇮🇹' : '🍽️'}
+                        {dish.cuisine === 'tunisien' ? '🥘' : dish.cuisine === 'italien' ? '🍝' : '🍽️'}
                       </Text>
                     </View>
                     <Text
