@@ -37,3 +37,4 @@ export interface MealHistoryEntry {
 }
 
 export type TabType = 'repas' | 'plats' | 'suggestions' | 'historique';
+

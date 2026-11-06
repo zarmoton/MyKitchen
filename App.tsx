@@ -33,6 +33,7 @@ export default function App() {
   const [userDishes, setUserDishes] = useState<Dish[]>([]);
   const [mealHistory, setMealHistory] = useState<MealHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [prefilledMeal, setPrefilledMeal] = useState<MealHistoryEntry | null>(null);
 
   // Load data on app launch
   useEffect(() => {
@@ -80,6 +81,11 @@ export default function App() {
     setMealHistory(updated);
   }, []);
 
+  const handleRepeatMeal = useCallback((meal: MealHistoryEntry) => {
+    setPrefilledMeal(meal);
+    setActiveTab('repas');
+  }, []);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -104,6 +110,7 @@ export default function App() {
             onValidateMeal={handleValidateMeal}
             onNavigateToHistory={() => setActiveTab('historique')}
             onNavigateToSuggestions={() => setActiveTab('suggestions')}
+            prefilledMeal={prefilledMeal}
           />
         )}
 
@@ -128,6 +135,7 @@ export default function App() {
             history={mealHistory}
             onDeleteHistoryEntry={handleDeleteHistoryEntry}
             onNavigateToRepas={() => setActiveTab('repas')}
+            onRepeatMeal={handleRepeatMeal}
           />
         )}
       </View>

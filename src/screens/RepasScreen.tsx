@@ -17,6 +17,7 @@ interface RepasScreenProps {
   onValidateMeal: (meal: MealHistoryEntry) => void;
   onNavigateToHistory: () => void;
   onNavigateToSuggestions: () => void;
+  prefilledMeal?: MealHistoryEntry | null;
 }
 
 export const RepasScreen: React.FC<RepasScreenProps> = ({
@@ -24,6 +25,7 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   onValidateMeal,
   onNavigateToHistory,
   onNavigateToSuggestions,
+  prefilledMeal,
 }) => {
   const dayInfo = getDayInfo();
 
@@ -39,6 +41,26 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   // Chabbat state
   const [shabbatSlot, setShabbatSlot] = useState<ShabbatSubOccasion>('vendredi_soir');
   const [selectedChabbatDishIds, setSelectedChabbatDishIds] = useState<Set<string>>(new Set());
+
+  // Watch for prefilledMeal from history
+  useEffect(() => {
+    if (!prefilledMeal) return;
+    setMealMode(prefilledMeal.occasion);
+    if (prefilledMeal.occasion === 'semaine') {
+      setSemainePlat(prefilledMeal.mainDishes?.[0] || null);
+      setSemaineSide(prefilledMeal.sides?.[0] || null);
+      setSemaineDessert(prefilledMeal.desserts?.[0] || null);
+    } else {
+      if (prefilledMeal.shabbatSlot) {
+        setShabbatSlot(prefilledMeal.shabbatSlot);
+      }
+      const allIds = new Set<string>();
+      prefilledMeal.mainDishes?.forEach(d => allIds.add(d.id));
+      prefilledMeal.sides?.forEach(d => allIds.add(d.id));
+      prefilledMeal.desserts?.forEach(d => allIds.add(d.id));
+      setSelectedChabbatDishIds(allIds);
+    }
+  }, [prefilledMeal]);
 
   // Filtered lists for Semaine
   const semaineDishes = useMemo(() => {
@@ -1244,3 +1266,4 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+

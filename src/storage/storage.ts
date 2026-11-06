@@ -3,7 +3,7 @@ import { Dish, MealHistoryEntry } from '../types';
 import { INITIAL_USER_DISHES } from '../data/defaultDishes';
 
 const STORAGE_KEYS = {
-  DISHES: '@mykitchen_user_dishes_v1',
+  DISHES: '@mykitchen_user_dishes_v2',
   MEAL_HISTORY: '@mykitchen_meal_history_v1',
 };
 
@@ -130,3 +130,4 @@ export const deleteMealFromHistory = async (entryId: string): Promise<MealHistor
     return [];
   }
 };
+

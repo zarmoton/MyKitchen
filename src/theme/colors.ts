@@ -42,3 +42,4 @@ export const colors = {
   dangerLight: '#FEE2E2',
   warning: '#F59E0B',
 };
+

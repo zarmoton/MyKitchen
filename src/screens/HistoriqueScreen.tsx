@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  Share,
 } from 'react-native';
 import { MealHistoryEntry, MealHistoryOccasion } from '../types';
 import { colors } from '../theme/colors';
@@ -15,12 +16,14 @@ interface HistoriqueScreenProps {
   history: MealHistoryEntry[];
   onDeleteHistoryEntry: (id: string) => void;
   onNavigateToRepas: () => void;
+  onRepeatMeal?: (meal: MealHistoryEntry) => void;
 }
 
 export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
   history,
   onDeleteHistoryEntry,
   onNavigateToRepas,
+  onRepeatMeal,
 }) => {
   const [filter, setFilter] = useState<'all' | 'semaine' | 'chabbat'>('all');
 
@@ -28,6 +31,31 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
     if (filter === 'all') return history;
     return history.filter(item => item.occasion === filter);
   }, [history, filter]);
+
+  const shareMeal = (item: MealHistoryEntry) => {
+    const isChabbat = item.occasion === 'chabbat';
+    const title = isChabbat
+      ? `🕯️ Menu de Chabbat (${item.shabbatSlot === 'vendredi_soir' ? 'Vendredi soir' : item.shabbatSlot === 'samedi_midi' ? 'Samedi midi' : 'Complet'}) :`
+      : `🍽️ Menu (${item.displayDate}) :`;
+
+    const lines = [title];
+    if (item.mainDishes?.length) {
+      lines.push('\nPlats :');
+      item.mainDishes.forEach(d => lines.push(`• ${d.name}`));
+    }
+    if (item.sides?.length) {
+      lines.push('\nAccompagnements :');
+      item.sides.forEach(s => lines.push(`• ${s.name}`));
+    }
+    if (item.desserts?.length) {
+      lines.push('\nDesserts :');
+      item.desserts.forEach(des => lines.push(`• ${des.name}`));
+    }
+
+    Share.share({
+      message: lines.join('\n'),
+    });
+  };
 
   const confirmDelete = (item: MealHistoryEntry) => {
     Alert.alert(
@@ -171,6 +199,29 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
                       </View>
                     ))}
                   </View>
+                )}
+              </View>
+
+              {/* Card Footer Actions */}
+              <View style={styles.cardActionsRow}>
+                <TouchableOpacity
+                  style={styles.cardActionBtn}
+                  onPress={() => shareMeal(item)}
+                >
+                  <Ionicons name="share-social-outline" size={15} color={colors.textSecondary} />
+                  <Text style={styles.cardActionBtnText}>Partager</Text>
+                </TouchableOpacity>
+
+                {onRepeatMeal && (
+                  <TouchableOpacity
+                    style={[styles.cardActionBtn, styles.cardActionBtnPrimary]}
+                    onPress={() => onRepeatMeal(item)}
+                  >
+                    <Ionicons name="refresh" size={15} color={colors.primary} />
+                    <Text style={[styles.cardActionBtnText, { color: colors.primary, fontWeight: '700' }]}>
+                      Refaire ce menu
+                    </Text>
+                  </TouchableOpacity>
                 )}
               </View>
             </View>
@@ -317,6 +368,32 @@ const styles = StyleSheet.create({
   itemsContainer: {
     gap: 6,
   },
+  cardActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  cardActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.cardAlt,
+  },
+  cardActionBtnPrimary: {
+    backgroundColor: colors.primaryLight,
+  },
+  cardActionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
   dishGroup: {
     gap: 6,
   },
@@ -377,3 +454,4 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
   },
 });
+
