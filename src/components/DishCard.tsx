@@ -57,6 +57,8 @@ const DishCardComponent: React.FC<DishCardProps> = ({
         return { label: 'Français', bg: colors.badgeFrancaisBg, color: colors.badgeFrancais };
       case 'classique':
         return { label: 'Classique', bg: colors.badgeClassiqueBg, color: colors.badgeClassique };
+      case 'bbq':
+        return { label: 'BBQ', bg: colors.badgeBbqBg, color: colors.badgeBbq };
     }
   }, [dish.cuisine]);
 

@@ -268,6 +268,15 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.miniChip, selectedCuisine === 'bbq' && styles.miniChipActiveBbq]}
+            onPress={() => setSelectedCuisine(selectedCuisine === 'bbq' ? 'all' : 'bbq')}
+          >
+            <Text style={[styles.miniChipText, selectedCuisine === 'bbq' && styles.miniChipTextActive]}>
+              🔥 BBQ
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.miniChip, selectedCuisine === 'classique' && styles.miniChipActive]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'classique' ? 'all' : 'classique')}
           >
@@ -464,6 +473,10 @@ const styles = StyleSheet.create({
   miniChipActiveFrancais: {
     backgroundColor: colors.badgeFrancais,
     borderColor: colors.badgeFrancais,
+  },
+  miniChipActiveBbq: {
+    backgroundColor: colors.badgeBbq,
+    borderColor: colors.badgeBbq,
   },
   miniChipActiveSemaine: {
     backgroundColor: colors.semaine,

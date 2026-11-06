@@ -333,6 +333,20 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
               Français
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedCuisine === 'bbq' && styles.filterChipActiveBbq]}
+            onPress={() => setSelectedCuisine(selectedCuisine === 'bbq' ? 'all' : 'bbq')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedCuisine === 'bbq' && styles.filterChipTextActive,
+              ]}
+            >
+              🔥 BBQ
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
@@ -488,6 +502,10 @@ const styles = StyleSheet.create({
   filterChipActiveFrancais: {
     backgroundColor: colors.badgeFrancais,
     borderColor: colors.badgeFrancais,
+  },
+  filterChipActiveBbq: {
+    backgroundColor: colors.badgeBbq,
+    borderColor: colors.badgeBbq,
   },
   filterChipText: {
     fontSize: 12.5,

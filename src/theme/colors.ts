@@ -40,6 +40,8 @@ export const colors = {
   badgeFrancaisBg: '#EEF2FF',
   badgeClassique: '#5C6BC0',
   badgeClassiqueBg: '#EDE7F6',
+  badgeBbq: '#C2410C',
+  badgeBbqBg: '#FFEDD5',
 
   // Functional
   danger: '#DC2626',

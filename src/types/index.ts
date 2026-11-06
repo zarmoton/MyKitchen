@@ -7,7 +7,7 @@ export type OccasionType =
   | 'chabbat_tous' 
   | 'tous';
 
-export type CuisineType = 'tunisien' | 'italien' | 'israelien' | 'francais' | 'classique';
+export type CuisineType = 'tunisien' | 'italien' | 'israelien' | 'francais' | 'classique' | 'bbq';
 
 export interface Dish {
   id: string;

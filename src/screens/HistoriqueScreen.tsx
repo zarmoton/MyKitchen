@@ -108,6 +108,8 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
         return 'Israélien';
       case 'francais':
         return 'Français';
+      case 'bbq':
+        return 'BBQ';
       default:
         return 'Classique';
     }

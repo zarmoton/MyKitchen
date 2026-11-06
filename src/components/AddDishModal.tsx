@@ -211,6 +211,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
                 { key: 'israelien', label: 'Israélien' },
                 { key: 'francais', label: 'Français' },
                 { key: 'classique', label: 'Classique / Familial' },
+                { key: 'bbq', label: '🔥 BBQ / Grillades' },
               ].map(item => (
                 <TouchableOpacity
                   key={item.key}
