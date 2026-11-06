@@ -51,3 +51,35 @@ export const formatDisplayDate = (isoString: string): string => {
   }
 };
 
+export const formatLastCooked = (isoString?: string): { text: string; isRecent: boolean; isNever: boolean } => {
+  if (!isoString) {
+    return { text: 'Jamais cuisiné', isRecent: false, isNever: true };
+  }
+
+  try {
+    const cookedDate = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - cookedDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    const monthNames = [
+      'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+      'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'
+    ];
+    const dateFormatted = `${dayNames[cookedDate.getDay()]} ${cookedDate.getDate()} ${monthNames[cookedDate.getMonth()]}`;
+
+    if (diffDays <= 0) {
+      return { text: 'Cuisiné aujourd’hui', isRecent: true, isNever: false };
+    }
+    if (diffDays === 1) {
+      return { text: 'Cuisiné hier', isRecent: true, isNever: false };
+    }
+    if (diffDays < 7) {
+      return { text: `Il y a ${diffDays} jours (${dateFormatted})`, isRecent: diffDays <= 3, isNever: false };
+    }
+    return { text: `Dernière fois : ${dateFormatted}`, isRecent: false, isNever: false };
+  } catch {
+    return { text: 'Date inconnue', isRecent: false, isNever: false };
+  }
+};

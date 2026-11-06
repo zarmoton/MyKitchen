@@ -37,9 +37,9 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
 
-  // Filtered dishes
+  // Filtered & sorted dishes
   const filteredDishes = useMemo(() => {
-    return userDishes.filter(dish => {
+    const list = userDishes.filter(dish => {
       // Search
       if (search.trim()) {
         const query = search.toLowerCase();
@@ -56,6 +56,22 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         if (selectedOccasion === 'chabbat' && !dish.occasion.startsWith('chabbat') && dish.occasion !== 'tous') {
           return false;
         }
+        if (
+          selectedOccasion === 'chabbat_vendredi' &&
+          dish.occasion !== 'chabbat_vendredi' &&
+          dish.occasion !== 'chabbat_tous' &&
+          dish.occasion !== 'tous'
+        ) {
+          return false;
+        }
+        if (
+          selectedOccasion === 'chabbat_samedi' &&
+          dish.occasion !== 'chabbat_samedi' &&
+          dish.occasion !== 'chabbat_tous' &&
+          dish.occasion !== 'tous'
+        ) {
+          return false;
+        }
       }
 
       // Type
@@ -69,6 +85,14 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
       }
 
       return true;
+    });
+
+    // Tri : du moins récemment cuisiné (en haut) au plus récent (en bas)
+    return list.sort((a, b) => {
+      if (!a.lastCookedDate && !b.lastCookedDate) return 0;
+      if (!a.lastCookedDate) return -1;
+      if (!b.lastCookedDate) return 1;
+      return new Date(a.lastCookedDate).getTime() - new Date(b.lastCookedDate).getTime();
     });
   }, [userDishes, search, selectedOccasion, selectedType, selectedCuisine]);
 
@@ -93,7 +117,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
       <View style={styles.topBar}>
         <View>
           <Text style={styles.screenTitle}>Mes Plats ({userDishes.length})</Text>
-          <Text style={styles.screenSubtitle}>Les plats habituels de votre maison</Text>
+          <Text style={styles.screenSubtitle}>Triés par date de dernier passage en cuisine</Text>
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalOpen(true)}>
           <Ionicons name="add" size={20} color="#FFFFFF" />
@@ -121,47 +145,26 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
       {/* Filter Horizontal Scroll */}
       <View style={styles.filtersWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {/* Occasion / Période */}
+          {/* Tous */}
           <TouchableOpacity
-            style={[styles.filterChip, selectedOccasion === 'all' && styles.filterChipActive]}
-            onPress={() => setSelectedOccasion('all')}
-          >
-            <Text style={[styles.filterChipText, selectedOccasion === 'all' && styles.filterChipTextActive]}>
-              Tous les repas ({userDishes.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, selectedOccasion === 'semaine' && styles.filterChipActiveSemaine]}
-            onPress={() => setSelectedOccasion(selectedOccasion === 'semaine' ? 'all' : 'semaine')}
+            style={[styles.filterChip, selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipActive]}
+            onPress={() => {
+              setSelectedOccasion('all');
+              setSelectedType('all');
+              setSelectedCuisine('all');
+            }}
           >
             <Text
               style={[
                 styles.filterChipText,
-                selectedOccasion === 'semaine' && styles.filterChipTextActiveSemaine,
+                selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipTextActive,
               ]}
             >
-              📅 Semaine
+              Tous ({userDishes.length})
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedOccasion === 'chabbat' && styles.filterChipActiveShabbat]}
-            onPress={() => setSelectedOccasion(selectedOccasion === 'chabbat' ? 'all' : 'chabbat')}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                selectedOccasion === 'chabbat' && styles.filterChipTextActiveShabbat,
-              ]}
-            >
-              🕯️ Chabbat
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.filterDivider} />
-
-          {/* Nature / Type */}
+          {/* Nature / Type - Demandé expressément */}
           <TouchableOpacity
             style={[styles.filterChip, selectedType === 'complet' && styles.filterChipActive]}
             onPress={() => setSelectedType(selectedType === 'complet' ? 'all' : 'complet')}
@@ -200,7 +203,66 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
 
           <View style={styles.filterDivider} />
 
-          {/* Cuisine */}
+          {/* Chabbat Vendredi soir & Samedi midi - Demandé expressément */}
+          <TouchableOpacity
+            style={[styles.filterChip, selectedOccasion === 'chabbat_vendredi' && styles.filterChipActiveShabbat]}
+            onPress={() => setSelectedOccasion(selectedOccasion === 'chabbat_vendredi' ? 'all' : 'chabbat_vendredi')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedOccasion === 'chabbat_vendredi' && styles.filterChipTextActiveShabbat,
+              ]}
+            >
+              🕯️ Chabbat vendredi soir
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedOccasion === 'chabbat_samedi' && styles.filterChipActiveShabbat]}
+            onPress={() => setSelectedOccasion(selectedOccasion === 'chabbat_samedi' ? 'all' : 'chabbat_samedi')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedOccasion === 'chabbat_samedi' && styles.filterChipTextActiveShabbat,
+              ]}
+            >
+              ☀️ Chabbat midi
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedOccasion === 'chabbat' && styles.filterChipActiveShabbat]}
+            onPress={() => setSelectedOccasion(selectedOccasion === 'chabbat' ? 'all' : 'chabbat')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedOccasion === 'chabbat' && styles.filterChipTextActiveShabbat,
+              ]}
+            >
+              🕯️☀️ Tout Chabbat
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedOccasion === 'semaine' && styles.filterChipActiveSemaine]}
+            onPress={() => setSelectedOccasion(selectedOccasion === 'semaine' ? 'all' : 'semaine')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedOccasion === 'semaine' && styles.filterChipTextActiveSemaine,
+              ]}
+            >
+              📅 Semaine
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.filterDivider} />
+
+          {/* Cuisines */}
           <TouchableOpacity
             style={[styles.filterChip, selectedCuisine === 'tunisien' && styles.filterChipActiveTunisien]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'tunisien' ? 'all' : 'tunisien')}
@@ -267,6 +329,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         renderItem={({ item }) => (
           <DishCard
             dish={item}
+            showLastCooked={true}
             onEdit={() => setEditingDish(item)}
             onDelete={() => confirmDelete(item)}
           />
@@ -327,7 +390,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   screenSubtitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -485,4 +548,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-

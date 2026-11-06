@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors } from '../theme/colors';
 import { getDayInfo } from '../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,9 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 interface HeaderProps {
   title?: string;
   subtitle?: string;
+  onOpenSettings?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title = "Qu'est-ce qu'on mange ?", subtitle }) => {
+export const Header: React.FC<HeaderProps> = ({
+  title = "Qu'est-ce qu'on mange ?",
+  subtitle,
+  onOpenSettings,
+}) => {
   const dayInfo = getDayInfo();
 
   return (
@@ -29,6 +34,16 @@ export const Header: React.FC<HeaderProps> = ({ title = "Qu'est-ce qu'on mange ?
             </Text>
           </View>
         </View>
+
+        {onOpenSettings && (
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={onOpenSettings}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
       {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
     </View>
@@ -80,6 +95,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 6,
+  },
+  settingsBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: colors.cardAlt,
   },
 });
 

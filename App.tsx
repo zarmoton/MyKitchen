@@ -15,19 +15,23 @@ import { RepasScreen } from './src/screens/RepasScreen';
 import { PlatsScreen } from './src/screens/PlatsScreen';
 import { SuggestionsScreen } from './src/screens/SuggestionsScreen';
 import { HistoriqueScreen } from './src/screens/HistoriqueScreen';
+import { SettingsModal } from './src/components/SettingsModal';
 import {
   getDishes,
   addDish,
   updateDish,
   removeDish,
+  saveDishes,
   getSuggestions,
   addSuggestion,
   updateSuggestion,
   deleteSuggestion,
+  saveSuggestions,
   toggleImportSuggestion,
   getMealHistory,
   addMealToHistory,
   deleteMealFromHistory,
+  saveMealHistory,
 } from './src/storage/storage';
 import { Dish, MealHistoryEntry, TabType } from './src/types';
 import { colors } from './src/theme/colors';
@@ -41,6 +45,7 @@ function MainApp() {
   const [mealHistory, setMealHistory] = useState<MealHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [prefilledMeal, setPrefilledMeal] = useState<MealHistoryEntry | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Load data on app launch
   useEffect(() => {
@@ -100,11 +105,37 @@ function MainApp() {
     setUserDishes(dishes);
   }, []);
 
-  // History handlers
-  const handleValidateMeal = useCallback(async (entry: MealHistoryEntry) => {
-    const updated = await addMealToHistory(entry);
-    setMealHistory(updated);
-  }, []);
+  // History handlers & updating lastCookedDate on cooked dishes
+  const handleValidateMeal = useCallback(
+    async (entry: MealHistoryEntry) => {
+      // 1. Add meal to history
+      const updatedHistory = await addMealToHistory(entry);
+      setMealHistory(updatedHistory);
+
+      // 2. Identify all dishes used in this meal
+      const cookedDishIds = new Set<string>();
+      entry.mainDishes?.forEach(d => cookedDishIds.add(d.id));
+      entry.sides?.forEach(d => cookedDishIds.add(d.id));
+      entry.desserts?.forEach(d => cookedDishIds.add(d.id));
+      entry.shabbatVendrediSoir?.forEach(d => cookedDishIds.add(d.id));
+      entry.shabbatSamediMidi?.forEach(d => cookedDishIds.add(d.id));
+
+      // 3. Update lastCookedDate timestamp on user dishes
+      const updatedDishes = userDishes.map(dish => {
+        if (cookedDishIds.has(dish.id)) {
+          return {
+            ...dish,
+            lastCookedDate: entry.date,
+          };
+        }
+        return dish;
+      });
+
+      setUserDishes(updatedDishes);
+      await saveDishes(updatedDishes);
+    },
+    [userDishes]
+  );
 
   const handleDeleteHistoryEntry = useCallback(async (id: string) => {
     const updated = await deleteMealFromHistory(id);
@@ -115,6 +146,40 @@ function MainApp() {
     setPrefilledMeal(meal);
     setActiveTab('repas');
   }, []);
+
+  // Settings handlers
+  const handleResetDishes = useCallback(async (dishes: Dish[]) => {
+    setUserDishes(dishes);
+    await saveDishes(dishes);
+  }, []);
+
+  const handleResetSuggestions = useCallback(async (sugs: Dish[]) => {
+    setSuggestions(sugs);
+    await saveSuggestions(sugs);
+  }, []);
+
+  const handleClearHistory = useCallback(async () => {
+    setMealHistory([]);
+    await saveMealHistory([]);
+  }, []);
+
+  const handleImportData = useCallback(
+    async (data: { dishes?: Dish[]; suggestions?: Dish[]; history?: MealHistoryEntry[] }) => {
+      if (data.dishes) {
+        setUserDishes(data.dishes);
+        await saveDishes(data.dishes);
+      }
+      if (data.suggestions) {
+        setSuggestions(data.suggestions);
+        await saveSuggestions(data.suggestions);
+      }
+      if (data.history) {
+        setMealHistory(data.history);
+        await saveMealHistory(data.history);
+      }
+    },
+    []
+  );
 
   if (isLoading) {
     return (
@@ -133,8 +198,8 @@ function MainApp() {
     <View style={[styles.safeArea, { paddingTop: dynamicTopPadding }]}>
       <StatusBar style="dark" />
 
-      {/* Main Header */}
-      <Header />
+      {/* Main Header with Settings button */}
+      <Header onOpenSettings={() => setIsSettingsOpen(true)} />
 
       {/* Active Screen View */}
       <View style={styles.contentContainer}>
@@ -266,6 +331,19 @@ function MainApp() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Settings & Backup Modal */}
+      <SettingsModal
+        visible={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        userDishes={userDishes}
+        suggestions={suggestions}
+        mealHistory={mealHistory}
+        onResetDishes={handleResetDishes}
+        onResetSuggestions={handleResetSuggestions}
+        onClearHistory={handleClearHistory}
+        onImportData={handleImportData}
+      />
     </View>
   );
 }

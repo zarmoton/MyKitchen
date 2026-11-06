@@ -8,7 +8,7 @@ import {
   Alert,
   Share,
 } from 'react-native';
-import { MealHistoryEntry, MealHistoryOccasion } from '../types';
+import { MealHistoryEntry, Dish } from '../types';
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -34,11 +34,52 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
 
   const shareMeal = (item: MealHistoryEntry) => {
     const isChabbat = item.occasion === 'chabbat';
-    const title = isChabbat
-      ? `🕯️ Menu de Chabbat (${item.shabbatSlot === 'vendredi_soir' ? 'Vendredi soir' : item.shabbatSlot === 'samedi_midi' ? 'Samedi midi' : 'Complet'}) :`
-      : `🍽️ Menu (${item.displayDate}) :`;
+    if (isChabbat) {
+      const lines = [`🕯️ Menu de Chabbat (${item.displayDate}) :`];
 
-    const lines = [title];
+      const vendrediDishes = item.shabbatVendrediSoir || [];
+      const samediDishes = item.shabbatSamediMidi || [];
+
+      if (vendrediDishes.length > 0 || samediDishes.length > 0) {
+        if (vendrediDishes.length > 0) {
+          lines.push('\n🕯️ VENDREDI SOIR :');
+          vendrediDishes.forEach(d => {
+            lines.push(`• ${d.name} (${getCuisineLabel(d.cuisine)})`);
+          });
+        }
+
+        if (samediDishes.length > 0) {
+          lines.push('\n☀️ SAMEDI MIDI :');
+          samediDishes.forEach(d => {
+            lines.push(`• ${d.name} (${getCuisineLabel(d.cuisine)})`);
+          });
+        }
+      } else {
+        // Fallback for older entries
+        if (item.mainDishes?.length) {
+          lines.push('\nPlats :');
+          item.mainDishes.forEach(d => lines.push(`• ${d.name}`));
+        }
+        if (item.sides?.length) {
+          lines.push('\nAccompagnements :');
+          item.sides.forEach(s => lines.push(`• ${s.name}`));
+        }
+        if (item.desserts?.length) {
+          lines.push('\nDesserts :');
+          item.desserts.forEach(des => lines.push(`• ${des.name}`));
+        }
+      }
+
+      lines.push('\n✨ Shabbat Shalom !');
+
+      Share.share({
+        message: lines.join('\n'),
+      });
+      return;
+    }
+
+    // Semaine
+    const lines = [`🍽️ Repas du ${item.displayDate} :`];
     if (item.mainDishes?.length) {
       lines.push('\nPlats :');
       item.mainDishes.forEach(d => lines.push(`• ${d.name}`));
@@ -57,6 +98,28 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
     });
   };
 
+  const getCuisineLabel = (cuisine: string) => {
+    switch (cuisine) {
+      case 'tunisien':
+        return 'Tunisien';
+      case 'italien':
+        return 'Italien';
+      case 'israelien':
+        return 'Israélien';
+      case 'francais':
+        return 'Français';
+      default:
+        return 'Classique';
+    }
+  };
+
+  const getDishIcon = (dish: Dish) => {
+    if (dish.type === 'dessert') return '🍰';
+    if (dish.type === 'accompagnement') return '🍟';
+    if (dish.type === 'complet') return '🍲';
+    return '🥩';
+  };
+
   const confirmDelete = (item: MealHistoryEntry) => {
     Alert.alert(
       'Supprimer du journal',
@@ -71,6 +134,25 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
       ]
     );
   };
+
+  const renderDishRow = (dish: Dish, idx: number) => (
+    <View key={dish.id || idx} style={styles.dishRow}>
+      <Text style={styles.dishIcon}>{getDishIcon(dish)}</Text>
+      <Text style={styles.dishName}>{dish.name}</Text>
+      <View style={styles.dishTagsRow}>
+        <Text style={styles.cuisineTag}>{getCuisineLabel(dish.cuisine)}</Text>
+        <Text style={styles.dishTypeTag}>
+          {dish.type === 'complet'
+            ? 'Plat complet'
+            : dish.type === 'principal'
+            ? 'À accompagner'
+            : dish.type === 'accompagnement'
+            ? 'Accompagnement'
+            : 'Dessert'}
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -119,6 +201,10 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
           const isChabbat = item.occasion === 'chabbat';
+          const hasVendredi = item.shabbatVendrediSoir && item.shabbatVendrediSoir.length > 0;
+          const hasSamedi = item.shabbatSamediMidi && item.shabbatSamediMidi.length > 0;
+          const isDetailedChabbat = isChabbat && (hasVendredi || hasSamedi);
+
           return (
             <View style={[styles.historyCard, isChabbat && styles.historyCardChabbat]}>
               {/* Header */}
@@ -137,13 +223,7 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
                         isChabbat ? styles.occasionBadgeTextChabbat : styles.occasionBadgeTextSemaine,
                       ]}
                     >
-                      {isChabbat
-                        ? item.shabbatSlot === 'vendredi_soir'
-                          ? '🕯️ Chabbat soir'
-                          : item.shabbatSlot === 'samedi_midi'
-                          ? '☀️ Chabbat midi'
-                          : '✨ Chabbat'
-                        : '📅 Semaine'}
+                      {isChabbat ? '🕯️ Chabbat' : '📅 Semaine'}
                     </Text>
                   </View>
                 </View>
@@ -158,47 +238,67 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
 
               {/* Items List */}
               <View style={styles.itemsContainer}>
-                {/* Main dishes */}
-                {item.mainDishes && item.mainDishes.length > 0 && (
-                  <View style={styles.dishGroup}>
-                    {item.mainDishes.map((dish, idx) => (
-                      <View key={idx} style={styles.dishRow}>
-                        <Text style={styles.dishIcon}>
-                          {dish.type === 'complet' ? '🍲' : '🥩'}
-                        </Text>
-                        <Text style={styles.dishName}>{dish.name}</Text>
-                        <Text style={styles.dishTypeTag}>
-                          {dish.type === 'complet' ? 'Plat complet' : 'Plat'}
-                        </Text>
+                {isDetailedChabbat ? (
+                  <>
+                    {/* 1st: Vendredi Soir Section */}
+                    {hasVendredi && (
+                      <View style={styles.chabbatSection}>
+                        <View style={styles.vendrediSectionHeader}>
+                          <Ionicons name="flame" size={15} color="#D97706" />
+                          <Text style={styles.vendrediSectionTitle}>1er : Vendredi Soir</Text>
+                          <View style={styles.sectionBadge}>
+                            <Text style={styles.sectionBadgeText}>
+                              {item.shabbatVendrediSoir!.length} plat(s)
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.dishGroup}>
+                          {item.shabbatVendrediSoir!.map((dish, idx) => renderDishRow(dish, idx))}
+                        </View>
                       </View>
-                    ))}
-                  </View>
-                )}
+                    )}
 
-                {/* Sides */}
-                {item.sides && item.sides.length > 0 && (
-                  <View style={styles.dishGroup}>
-                    {item.sides.map((side, idx) => (
-                      <View key={idx} style={styles.dishRow}>
-                        <Text style={styles.dishIcon}>🍟</Text>
-                        <Text style={styles.dishName}>{side.name}</Text>
-                        <Text style={styles.dishTypeTag}>Accompagnement</Text>
+                    {/* 2nd: Samedi Midi Section */}
+                    {hasSamedi && (
+                      <View style={[styles.chabbatSection, styles.samediSectionMargin]}>
+                        <View style={styles.samediSectionHeader}>
+                          <Ionicons name="sunny" size={15} color="#B45309" />
+                          <Text style={styles.samediSectionTitle}>2ème : Samedi Midi</Text>
+                          <View style={styles.sectionBadge}>
+                            <Text style={styles.sectionBadgeText}>
+                              {item.shabbatSamediMidi!.length} plat(s)
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.dishGroup}>
+                          {item.shabbatSamediMidi!.map((dish, idx) => renderDishRow(dish, idx))}
+                        </View>
                       </View>
-                    ))}
-                  </View>
-                )}
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Main dishes */}
+                    {item.mainDishes && item.mainDishes.length > 0 && (
+                      <View style={styles.dishGroup}>
+                        {item.mainDishes.map((dish, idx) => renderDishRow(dish, idx))}
+                      </View>
+                    )}
 
-                {/* Desserts */}
-                {item.desserts && item.desserts.length > 0 && (
-                  <View style={styles.dishGroup}>
-                    {item.desserts.map((dessert, idx) => (
-                      <View key={idx} style={styles.dishRow}>
-                        <Text style={styles.dishIcon}>🍰</Text>
-                        <Text style={styles.dishName}>{dessert.name}</Text>
-                        <Text style={styles.dishTypeTag}>Dessert</Text>
+                    {/* Sides */}
+                    {item.sides && item.sides.length > 0 && (
+                      <View style={styles.dishGroup}>
+                        {item.sides.map((side, idx) => renderDishRow(side, idx))}
                       </View>
-                    ))}
-                  </View>
+                    )}
+
+                    {/* Desserts */}
+                    {item.desserts && item.desserts.length > 0 && (
+                      <View style={styles.dishGroup}>
+                        {item.desserts.map((dessert, idx) => renderDishRow(dessert, idx))}
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
 
@@ -209,7 +309,7 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
                   onPress={() => shareMeal(item)}
                 >
                   <Ionicons name="share-social-outline" size={15} color={colors.textSecondary} />
-                  <Text style={styles.cardActionBtnText}>Partager</Text>
+                  <Text style={styles.cardActionBtnText}>Partager le menu</Text>
                 </TouchableOpacity>
 
                 {onRepeatMeal && (
@@ -219,7 +319,7 @@ export const HistoriqueScreen: React.FC<HistoriqueScreenProps> = ({
                   >
                     <Ionicons name="refresh" size={15} color={colors.primary} />
                     <Text style={[styles.cardActionBtnText, { color: colors.primary, fontWeight: '700' }]}>
-                      Refaire ce menu
+                      Reprendre ce menu
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -311,7 +411,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 16,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.borderLight,
     shadowColor: '#000',
@@ -322,7 +422,7 @@ const styles = StyleSheet.create({
   },
   historyCardChabbat: {
     borderColor: '#D8CEE8',
-    backgroundColor: '#FAF8FC',
+    backgroundColor: '#FCFBFE',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -366,7 +466,58 @@ const styles = StyleSheet.create({
     color: colors.shabbat,
   },
   itemsContainer: {
+    gap: 10,
+  },
+  chabbatSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  samediSectionMargin: {
+    marginTop: 4,
+  },
+  vendrediSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  vendrediSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+    flex: 1,
+  },
+  samediSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomColor: '#F3F4F6',
+    borderBottomWidth: 1,
+  },
+  samediSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#78350F',
+    flex: 1,
+  },
+  sectionBadge: {
+    backgroundColor: colors.cardAlt,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  sectionBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   cardActionsRow: {
     flexDirection: 'row',
@@ -401,23 +552,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 2,
   },
   dishIcon: {
-    fontSize: 16,
+    fontSize: 15,
   },
   dishName: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
     color: colors.text,
     flex: 1,
   },
+  dishTagsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cuisineTag: {
+    fontSize: 10.5,
+    color: colors.textSecondary,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+    fontWeight: '500',
+  },
   dishTypeTag: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: colors.textSecondary,
     backgroundColor: colors.cardAlt,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 5,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -454,4 +620,3 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
   },
 });
-

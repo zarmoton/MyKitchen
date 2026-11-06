@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Dish } from '../types';
 import { colors } from '../theme/colors';
+import { formatLastCooked } from '../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 
 interface DishCardProps {
@@ -14,6 +15,7 @@ interface DishCardProps {
   isImportedInUserDishes?: boolean;
   onToggleImport?: () => void;
   selectable?: boolean;
+  showLastCooked?: boolean;
 }
 
 export const DishCard: React.FC<DishCardProps> = ({
@@ -26,6 +28,7 @@ export const DishCard: React.FC<DishCardProps> = ({
   isImportedInUserDishes = false,
   onToggleImport,
   selectable = false,
+  showLastCooked = false,
 }) => {
   const getTypeBadge = () => {
     switch (dish.type) {
@@ -73,6 +76,7 @@ export const DishCard: React.FC<DishCardProps> = ({
   const typeBadge = getTypeBadge();
   const cuisineBadge = getCuisineBadge();
   const occasionBadge = getOccasionBadge();
+  const lastCookedInfo = formatLastCooked(dish.lastCookedDate);
 
   // In suggestion view: If already imported to "Mes Plats", the line turns green!
   const isGreenHighlight = isSuggestionView && isImportedInUserDishes;
@@ -131,6 +135,32 @@ export const DishCard: React.FC<DishCardProps> = ({
             <View style={[styles.badge, { backgroundColor: occasionBadge.bg }]}>
               <Text style={[styles.badgeText, { color: occasionBadge.color }]}>{occasionBadge.label}</Text>
             </View>
+
+            {/* Date de dernière sélection */}
+            {showLastCooked && (
+              <View
+                style={[
+                  styles.badge,
+                  styles.lastCookedBadge,
+                  lastCookedInfo.isNever && styles.lastCookedBadgeNever,
+                ]}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={11}
+                  color={lastCookedInfo.isNever ? '#059669' : colors.textSecondary}
+                  style={{ marginRight: 3 }}
+                />
+                <Text
+                  style={[
+                    styles.badgeText,
+                    { color: lastCookedInfo.isNever ? '#059669' : colors.textSecondary },
+                  ]}
+                >
+                  {lastCookedInfo.text}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -266,6 +296,15 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  lastCookedBadge: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  lastCookedBadgeNever: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   actionsRow: {
     flexDirection: 'row',

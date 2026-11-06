@@ -19,6 +19,7 @@ export interface Dish {
   isCustom?: boolean;
   createdAt?: number;
   sourceSuggestionId?: string;
+  lastCookedDate?: string; // ISO date string of when this dish was last prepared/selected
 }
 
 export type MealHistoryOccasion = 'semaine' | 'chabbat';
@@ -33,8 +34,10 @@ export interface MealHistoryEntry {
   mainDishes: Dish[];
   sides: Dish[];
   desserts: Dish[];
+  // Specific Chabbat breakdown
+  shabbatVendrediSoir?: Dish[];
+  shabbatSamediMidi?: Dish[];
   notes?: string;
 }
 
 export type TabType = 'repas' | 'plats' | 'suggestions' | 'historique';
-

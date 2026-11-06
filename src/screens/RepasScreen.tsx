@@ -7,8 +7,8 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { Dish, MealHistoryEntry, MealHistoryOccasion, ShabbatSubOccasion } from '../types';
-import { getDayInfo, formatDisplayDate } from '../utils/dateUtils';
+import { Dish, MealHistoryEntry, MealHistoryOccasion } from '../types';
+import { getDayInfo, formatDisplayDate, formatLastCooked } from '../utils/dateUtils';
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -36,11 +36,10 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   const [semainePlat, setSemainePlat] = useState<Dish | null>(null);
   const [semaineSide, setSemaineSide] = useState<Dish | null>(null);
   const [semaineDessert, setSemaineDessert] = useState<Dish | null>(null);
-  const [randomModeActive, setRandomModeActive] = useState<boolean>(false);
 
-  // Chabbat state
-  const [shabbatSlot, setShabbatSlot] = useState<ShabbatSubOccasion>('vendredi_soir');
-  const [selectedChabbatDishIds, setSelectedChabbatDishIds] = useState<Set<string>>(new Set());
+  // Chabbat state: separate sets for Friday evening & Saturday lunch per card
+  const [vendrediDishIds, setVendrediDishIds] = useState<Set<string>>(new Set());
+  const [samediDishIds, setSamediDishIds] = useState<Set<string>>(new Set());
 
   // Watch for prefilledMeal from history
   useEffect(() => {
@@ -51,32 +50,53 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
       setSemaineSide(prefilledMeal.sides?.[0] || null);
       setSemaineDessert(prefilledMeal.desserts?.[0] || null);
     } else {
-      if (prefilledMeal.shabbatSlot) {
-        setShabbatSlot(prefilledMeal.shabbatSlot);
+      if (prefilledMeal.shabbatVendrediSoir || prefilledMeal.shabbatSamediMidi) {
+        setVendrediDishIds(new Set((prefilledMeal.shabbatVendrediSoir || []).map(d => d.id)));
+        setSamediDishIds(new Set((prefilledMeal.shabbatSamediMidi || []).map(d => d.id)));
+      } else {
+        // Fallback legacy format
+        const allIds = new Set<string>();
+        prefilledMeal.mainDishes?.forEach(d => allIds.add(d.id));
+        prefilledMeal.sides?.forEach(d => allIds.add(d.id));
+        prefilledMeal.desserts?.forEach(d => allIds.add(d.id));
+        if (prefilledMeal.shabbatSlot === 'samedi_midi') {
+          setSamediDishIds(allIds);
+        } else {
+          setVendrediDishIds(allIds);
+        }
       }
-      const allIds = new Set<string>();
-      prefilledMeal.mainDishes?.forEach(d => allIds.add(d.id));
-      prefilledMeal.sides?.forEach(d => allIds.add(d.id));
-      prefilledMeal.desserts?.forEach(d => allIds.add(d.id));
-      setSelectedChabbatDishIds(allIds);
     }
   }, [prefilledMeal]);
+
+  // Sorting helper: dishes least recently cooked (or never cooked) are placed at the TOP,
+  // and the most recently cooked are placed at the BOTTOM!
+  const sortByCookingDate = (dishes: Dish[]): Dish[] => {
+    return [...dishes].sort((a, b) => {
+      if (!a.lastCookedDate && !b.lastCookedDate) return 0;
+      if (!a.lastCookedDate) return -1;
+      if (!b.lastCookedDate) return 1;
+      return new Date(a.lastCookedDate).getTime() - new Date(b.lastCookedDate).getTime();
+    });
+  };
 
   // Filtered lists for Semaine
   const semaineDishes = useMemo(() => {
     return userDishes.filter(d => d.occasion === 'semaine' || d.occasion === 'tous');
   }, [userDishes]);
 
-  const semaineMainsAndComplets = useMemo(() => {
-    return semaineDishes.filter(d => d.type === 'complet' || d.type === 'principal');
+  const sortedSemaineMains = useMemo(() => {
+    const list = semaineDishes.filter(d => d.type === 'complet' || d.type === 'principal');
+    return sortByCookingDate(list);
   }, [semaineDishes]);
 
-  const allSides = useMemo(() => {
-    return userDishes.filter(d => d.type === 'accompagnement');
+  const sortedSides = useMemo(() => {
+    const list = userDishes.filter(d => d.type === 'accompagnement');
+    return sortByCookingDate(list);
   }, [userDishes]);
 
-  const allDesserts = useMemo(() => {
-    return userDishes.filter(d => d.type === 'dessert');
+  const sortedDesserts = useMemo(() => {
+    const list = userDishes.filter(d => d.type === 'dessert');
+    return sortByCookingDate(list);
   }, [userDishes]);
 
   // Filtered lists for Chabbat
@@ -84,92 +104,85 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
     return userDishes.filter(d => d.occasion.startsWith('chabbat') || d.occasion === 'tous');
   }, [userDishes]);
 
-  const chabbatEntrees = useMemo(() => {
-    return chabbatDishes.filter(d => d.type === 'accompagnement' && (d.cuisine === 'tunisien' || d.name.toLowerCase().includes('salade') || d.name.toLowerCase().includes('slata') || d.name.toLowerCase().includes('torchi') || d.name.toLowerCase().includes('kémia') || d.name.toLowerCase().includes('brik')));
+  const sortedChabbatMains = useMemo(() => {
+    const list = chabbatDishes.filter(d => d.type === 'complet' || d.type === 'principal');
+    return sortByCookingDate(list);
   }, [chabbatDishes]);
 
-  const chabbatMains = useMemo(() => {
-    return chabbatDishes.filter(d => d.type === 'complet' || d.type === 'principal');
+  const sortedChabbatEntrees = useMemo(() => {
+    const list = chabbatDishes.filter(
+      d =>
+        d.type === 'accompagnement' &&
+        (d.cuisine === 'tunisien' ||
+          d.cuisine === 'israelien' ||
+          d.name.toLowerCase().includes('salade') ||
+          d.name.toLowerCase().includes('slata') ||
+          d.name.toLowerCase().includes('torchi') ||
+          d.name.toLowerCase().includes('kémia') ||
+          d.name.toLowerCase().includes('brik'))
+    );
+    return sortByCookingDate(list);
   }, [chabbatDishes]);
 
-  const chabbatSides = useMemo(() => {
-    return chabbatDishes.filter(d => d.type === 'accompagnement' && !chabbatEntrees.some(e => e.id === d.id));
-  }, [chabbatDishes, chabbatEntrees]);
+  const sortedChabbatSides = useMemo(() => {
+    const list = chabbatDishes.filter(
+      d => d.type === 'accompagnement' && !sortedChabbatEntrees.some(e => e.id === d.id)
+    );
+    return sortByCookingDate(list);
+  }, [chabbatDishes, sortedChabbatEntrees]);
 
-  const chabbatDesserts = useMemo(() => {
-    return chabbatDishes.filter(d => d.type === 'dessert');
+  const sortedChabbatDesserts = useMemo(() => {
+    const list = chabbatDishes.filter(d => d.type === 'dessert');
+    return sortByCookingDate(list);
   }, [chabbatDishes]);
 
-  // Roll random meal for Semaine
-  const handleRandomSemaineMeal = () => {
-    if (semaineMainsAndComplets.length === 0) {
-      Alert.alert('Aucun plat disponible', 'Ajoutez des plats de semaine pour pouvoir lancer une suggestion.');
-      return;
-    }
-
-    const randomPlat = semaineMainsAndComplets[Math.floor(Math.random() * semaineMainsAndComplets.length)];
-    setSemainePlat(randomPlat);
-
-    if (randomPlat.type === 'principal' && allSides.length > 0) {
-      const randomSide = allSides[Math.floor(Math.random() * allSides.length)];
-      setSemaineSide(randomSide);
-    } else {
-      setSemaineSide(null);
-    }
-
-    if (allDesserts.length > 0 && Math.random() > 0.4) {
-      const randomDessert = allDesserts[Math.floor(Math.random() * allDesserts.length)];
-      setSemaineDessert(randomDessert);
-    } else {
-      setSemaineDessert(null);
-    }
-
-    setRandomModeActive(true);
-  };
-
-  // Roll random menu for Chabbat
-  const handleRandomChabbatMenu = () => {
-    const selected = new Set<string>();
-
-    // 1-2 Entrées / Kémia
-    if (chabbatEntrees.length > 0) {
-      const e = chabbatEntrees[Math.floor(Math.random() * chabbatEntrees.length)];
-      selected.add(e.id);
-    }
-
-    // 1-2 Plats
-    if (chabbatMains.length > 0) {
-      const m1 = chabbatMains[Math.floor(Math.random() * chabbatMains.length)];
-      selected.add(m1.id);
-      // Optional 2nd dish (e.g., boulettes or poisson)
-      const others = chabbatMains.filter(m => m.id !== m1.id);
-      if (others.length > 0 && Math.random() > 0.3) {
-        selected.add(others[Math.floor(Math.random() * others.length)].id);
-      }
-    }
-
-    // Accompagnement
-    if (chabbatSides.length > 0 && Math.random() > 0.3) {
-      selected.add(chabbatSides[Math.floor(Math.random() * chabbatSides.length)].id);
-    }
-
-    // Dessert
-    if (chabbatDesserts.length > 0) {
-      selected.add(chabbatDesserts[Math.floor(Math.random() * chabbatDesserts.length)].id);
-    }
-
-    setSelectedChabbatDishIds(selected);
-  };
-
-  // Toggle dish in Chabbat multi-select
-  const toggleChabbatDish = (dishId: string) => {
-    const next = new Set(selectedChabbatDishIds);
+  // Toggle dish in Friday night list
+  const toggleVendrediDish = (dishId: string) => {
+    const next = new Set(vendrediDishIds);
     if (next.has(dishId)) {
       next.delete(dishId);
     } else {
       next.add(dishId);
     }
-    setSelectedChabbatDishIds(next);
+    setVendrediDishIds(next);
+  };
+
+  // Toggle dish in Saturday lunch list
+  const toggleSamediDish = (dishId: string) => {
+    const next = new Set(samediDishIds);
+    if (next.has(dishId)) {
+      next.delete(dishId);
+    } else {
+      next.add(dishId);
+    }
+    setSamediDishIds(next);
+  };
+
+  // Roll random meal for Semaine (prioritizes least recently cooked)
+  const handleRandomSemaineMeal = () => {
+    if (sortedSemaineMains.length === 0) {
+      Alert.alert('Aucun plat disponible', 'Ajoutez des plats de semaine pour pouvoir lancer une suggestion.');
+      return;
+    }
+
+    // Pick among the top least recently cooked dishes (first half)
+    const candidatesCount = Math.max(1, Math.ceil(sortedSemaineMains.length / 2));
+    const randomPlat = sortedSemaineMains[Math.floor(Math.random() * candidatesCount)];
+    setSemainePlat(randomPlat);
+
+    if (randomPlat.type === 'principal' && sortedSides.length > 0) {
+      const randomSide = sortedSides[Math.floor(Math.random() * Math.max(1, Math.ceil(sortedSides.length / 2)))];
+      setSemaineSide(randomSide);
+    } else {
+      setSemaineSide(null);
+    }
+
+    if (sortedDesserts.length > 0 && Math.random() > 0.4) {
+      const randomDessert = sortedDesserts[Math.floor(Math.random() * sortedDesserts.length)];
+      setSemaineDessert(randomDessert);
+    } else {
+      setSemaineDessert(null);
+    }
   };
 
   // Validate Semaine meal
@@ -213,31 +226,36 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
     onValidateMeal(entry);
     Alert.alert(
       '🎉 Repas enregistré !',
-      'Le repas a été validé et ajouté à votre historique.',
+      'Le repas a été validé et archivé dans l’historique. La date de dernière sélection de ce plat a été mise à jour.',
       [
         { text: 'Voir l’historique', onPress: onNavigateToHistory },
         { text: 'Super !', style: 'default' },
       ]
     );
 
-    // Reset selection
     setSemainePlat(null);
     setSemaineSide(null);
     setSemaineDessert(null);
-    setRandomModeActive(false);
   };
 
   // Validate Chabbat meal
   const handleValidateChabbatMeal = () => {
-    if (selectedChabbatDishIds.size === 0) {
-      Alert.alert('Sélection vide', 'Veuillez cocher au moins un plat pour votre repas de Chabbat.');
+    if (vendrediDishIds.size === 0 && samediDishIds.size === 0) {
+      Alert.alert(
+        'Aucun plat sélectionné',
+        'Veuillez attribuer au moins un plat pour le Vendredi soir ou le Samedi midi sur les cartes ci-dessous.'
+      );
       return;
     }
 
-    const selectedDishes = userDishes.filter(d => selectedChabbatDishIds.has(d.id));
-    const mains = selectedDishes.filter(d => d.type === 'complet' || d.type === 'principal');
-    const sides = selectedDishes.filter(d => d.type === 'accompagnement');
-    const desserts = selectedDishes.filter(d => d.type === 'dessert');
+    const dishesMap = new Map(userDishes.map(d => [d.id, d]));
+    const vendrediDishes = Array.from(vendrediDishIds).map(id => dishesMap.get(id)!).filter(Boolean);
+    const samediDishes = Array.from(samediDishIds).map(id => dishesMap.get(id)!).filter(Boolean);
+
+    const allDishes = Array.from(new Set([...vendrediDishes, ...samediDishes]));
+    const mains = allDishes.filter(d => d.type === 'complet' || d.type === 'principal');
+    const sides = allDishes.filter(d => d.type === 'accompagnement');
+    const desserts = allDishes.filter(d => d.type === 'dessert');
 
     const now = new Date();
     const entry: MealHistoryEntry = {
@@ -245,7 +263,9 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
       date: now.toISOString(),
       displayDate: formatDisplayDate(now.toISOString()),
       occasion: 'chabbat',
-      shabbatSlot,
+      shabbatSlot: 'les_deux',
+      shabbatVendrediSoir: vendrediDishes,
+      shabbatSamediMidi: samediDishes,
       mainDishes: mains,
       sides,
       desserts,
@@ -254,14 +274,127 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
     onValidateMeal(entry);
     Alert.alert(
       '🕯️ Shabbat Shalom ! Festin validé !',
-      `Menu enregistré pour ${shabbatSlot === 'vendredi_soir' ? 'Vendredi soir' : shabbatSlot === 'samedi_midi' ? 'Samedi midi' : 'le Chabbat complet'} avec ${selectedDishes.length} mets.`,
+      `Menu enregistré :\n• Vendredi soir : ${vendrediDishes.length} plat(s)\n• Samedi midi : ${samediDishes.length} plat(s)`,
       [
         { text: 'Consulter l’historique', onPress: onNavigateToHistory },
         { text: 'Parfait', style: 'default' },
       ]
     );
 
-    setSelectedChabbatDishIds(new Set());
+    setVendrediDishIds(new Set());
+    setSamediDishIds(new Set());
+  };
+
+  // Helper component for a Chabbat card with Vendredi & Samedi toggle buttons directly on it
+  const renderChabbatDishItem = (dish: Dish) => {
+    const isVendredi = vendrediDishIds.has(dish.id);
+    const isSamedi = samediDishIds.has(dish.id);
+    const isChosen = isVendredi || isSamedi;
+    const lastCooked = formatLastCooked(dish.lastCookedDate);
+
+    return (
+      <View
+        key={dish.id}
+        style={[
+          styles.chabbatCard,
+          isChosen && styles.chabbatCardActive,
+          isVendredi && !isSamedi && styles.chabbatCardFridayOnly,
+          isSamedi && !isVendredi && styles.chabbatCardSaturdayOnly,
+          isVendredi && isSamedi && styles.chabbatCardBoth,
+        ]}
+      >
+        <View style={styles.chabbatCardTop}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.chabbatCardNameRow}>
+              <Text style={styles.chabbatCardName}>{dish.name}</Text>
+              <Text style={styles.cuisineIcon}>
+                {dish.cuisine === 'tunisien'
+                  ? '🥘'
+                  : dish.cuisine === 'israelien'
+                  ? '🧆'
+                  : dish.cuisine === 'italien'
+                  ? '🍝'
+                  : dish.cuisine === 'francais'
+                  ? '🥖'
+                  : '🍽️'}
+              </Text>
+            </View>
+
+            {dish.description ? (
+              <Text style={styles.chabbatCardDesc} numberOfLines={2}>
+                {dish.description}
+              </Text>
+            ) : null}
+
+            {/* Date info pill */}
+            <View style={styles.chabbatDateBadge}>
+              <Ionicons
+                name="calendar-outline"
+                size={11}
+                color={lastCooked.isNever ? '#059669' : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.chabbatDateBadgeText,
+                  lastCooked.isNever && { color: '#059669', fontWeight: '700' },
+                ]}
+              >
+                {lastCooked.text}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* The two individual toggle buttons for each dish */}
+        <View style={styles.chabbatButtonsRow}>
+          <TouchableOpacity
+            style={[
+              styles.chabbatSlotToggleBtn,
+              isVendredi && styles.chabbatSlotToggleBtnVendrediActive,
+            ]}
+            onPress={() => toggleVendrediDish(dish.id)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isVendredi ? 'checkmark-circle' : 'ellipse-outline'}
+              size={16}
+              color={isVendredi ? '#FFFFFF' : colors.shabbat}
+            />
+            <Text
+              style={[
+                styles.chabbatSlotToggleBtnText,
+                isVendredi && styles.chabbatSlotToggleBtnTextActive,
+              ]}
+            >
+              🕯️ Vendredi Soir
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.chabbatSlotToggleBtn,
+              isSamedi && styles.chabbatSlotToggleBtnSamediActive,
+            ]}
+            onPress={() => toggleSamediDish(dish.id)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isSamedi ? 'checkmark-circle' : 'ellipse-outline'}
+              size={16}
+              color={isSamedi ? '#FFFFFF' : '#B45309'}
+            />
+            <Text
+              style={[
+                styles.chabbatSlotToggleBtnText,
+                isSamedi && styles.chabbatSlotToggleBtnTextActive,
+              ]}
+            >
+              ☀️ Samedi Midi
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -315,8 +448,8 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
           />
           <Text style={[styles.hintText, { color: mealMode === 'chabbat' ? colors.shabbat : colors.semaine }]}>
             {dayInfo.isChabbatTime
-              ? `Nous sommes ${dayInfo.dayName} : Mode Chabbat sélectionné par défaut.`
-              : `Nous sommes ${dayInfo.dayName} : Mode Semaine sélectionné par défaut.`}
+              ? `Nous sommes ${dayInfo.dayName} : Mode Chabbat actif par défaut.`
+              : `Nous sommes ${dayInfo.dayName} : Mode Semaine actif par défaut.`}
           </Text>
         </View>
       </View>
@@ -332,7 +465,7 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               <View style={{ flex: 1 }}>
                 <Text style={styles.randomTitle}>🎲 En panne d’inspiration ?</Text>
                 <Text style={styles.randomSubtitle}>
-                  Tirage au sort d’un bon plat de semaine parmi vos favoris
+                  Tirage au sort parmi les plats les moins récemment cuisinés
                 </Text>
               </View>
               <TouchableOpacity style={styles.randomActionBtn} onPress={handleRandomSemaineMeal}>
@@ -341,11 +474,11 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* SELECTION CARD PREVIEW IF SOMETHING IS CHOSEN */}
+            {/* SELECTION PREVIEW BOX */}
             {(semainePlat || semaineSide || semaineDessert) && (
               <View style={styles.previewBox}>
                 <View style={styles.previewHeader}>
-                  <Text style={styles.previewTitle}>✨ Repas en cours de composition</Text>
+                  <Text style={styles.previewTitle}>✨ Repas sélectionné</Text>
                   <TouchableOpacity
                     onPress={() => {
                       setSemainePlat(null);
@@ -414,15 +547,22 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               </View>
             )}
 
-            {/* SECTION 1: LE PLAT PRINCIPAL */}
+            {/* SECTION 1: LE PLAT PRINCIPAL (TRIÉ PAR DERNIÈRE FOIS CUISINÉ) */}
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>1. Choisir le plat</Text>
-              <Text style={styles.sectionCounter}>{semaineMainsAndComplets.length} choix</Text>
+              <View>
+                <Text style={styles.sectionTitle}>1. Choisir le plat</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Classés du moins récemment cuisiné (en haut) au plus récent (en bas)
+                </Text>
+              </View>
+              <Text style={styles.sectionCounter}>{sortedSemaineMains.length} choix</Text>
             </View>
 
             <View style={styles.dishesGrid}>
-              {semaineMainsAndComplets.map(dish => {
+              {sortedSemaineMains.map(dish => {
                 const isSelected = semainePlat?.id === dish.id;
+                const lastCooked = formatLastCooked(dish.lastCookedDate);
+
                 return (
                   <TouchableOpacity
                     key={dish.id}
@@ -445,18 +585,30 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                         <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
                       )}
                     </View>
-                    <Text style={[styles.choiceName, isSelected && styles.choiceNameSelected]}>
+                    <Text style={[styles.choiceName, isSelected && styles.choiceNameSelected]} numberOfLines={2}>
                       {dish.name}
                     </Text>
                     <Text style={styles.choiceType}>
                       {dish.type === 'complet' ? 'Plat complet' : 'À accompagner'}
                     </Text>
+
+                    {/* Date badge */}
+                    <View style={[styles.dateBadgePill, lastCooked.isNever && styles.dateBadgePillNever]}>
+                      <Text
+                        style={[
+                          styles.dateBadgePillText,
+                          lastCooked.isNever && styles.dateBadgePillTextNever,
+                        ]}
+                      >
+                        {lastCooked.text}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            {/* SECTION 2: ACCOMPAGNEMENT (ACTIVÉ NOTAMMENT SI PLAT À ACCOMPAGNER) */}
+            {/* SECTION 2: ACCOMPAGNEMENT */}
             <View
               style={[
                 styles.sectionContainer,
@@ -470,15 +622,17 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                   </Text>
                   <Text style={styles.sectionSubtitle}>
                     {semainePlat?.type === 'principal'
-                      ? 'Nécessaire pour compléter votre plat de viande/poisson'
+                      ? 'Nécessaire pour compléter votre viande ou poisson'
                       : 'Optionnel si vous souhaitez une salade ou garniture'}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.chipsWrap}>
-                {allSides.map(side => {
+                {sortedSides.map(side => {
                   const isSelected = semaineSide?.id === side.id;
+                  const lastCooked = formatLastCooked(side.lastCookedDate);
+
                   return (
                     <TouchableOpacity
                       key={side.id}
@@ -489,11 +643,16 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                       onPress={() => setSemaineSide(isSelected ? null : side)}
                     >
                       <Text style={styles.chipIcon}>🍟</Text>
-                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                        {side.name}
-                      </Text>
+                      <View>
+                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                          {side.name}
+                        </Text>
+                        <Text style={[styles.chipSubDate, isSelected && { color: '#FFFFFF' }]}>
+                          {lastCooked.text}
+                        </Text>
+                      </View>
                       {isSelected && (
-                        <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
+                        <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
                       )}
                     </TouchableOpacity>
                   );
@@ -501,17 +660,17 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               </View>
             </View>
 
-            {/* SECTION 3: DESSERT (OPTIONNEL) */}
+            {/* SECTION 3: DESSERT */}
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeaderRow}>
                 <View>
                   <Text style={styles.sectionTitle}>3. Un dessert ? (Optionnel)</Text>
-                  <Text style={styles.sectionSubtitle}>Pour terminer en douceur</Text>
+                  <Text style={styles.sectionSubtitle}>Pour terminer sur une note sucrée</Text>
                 </View>
               </View>
 
               <View style={styles.chipsWrap}>
-                {allDesserts.map(dessert => {
+                {sortedDesserts.map(dessert => {
                   const isSelected = semaineDessert?.id === dessert.id;
                   return (
                     <TouchableOpacity
@@ -538,271 +697,147 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
         )}
 
         {/* ==================================================== */}
-        {/* MODE CHABBAT */}
+        {/* MODE CHABBAT (AVEC CHOIX VENDREDI / SAMEDI SUR CHAQUE CARTE) */}
         {/* ==================================================== */}
         {mealMode === 'chabbat' && (
           <View>
-            {/* Chabbat Slot Selector: Vendredi soir vs Samedi midi */}
-            <View style={styles.shabbatSlotRow}>
-              <TouchableOpacity
-                style={[
-                  styles.shabbatSlotBtn,
-                  shabbatSlot === 'vendredi_soir' && styles.shabbatSlotBtnActive,
-                ]}
-                onPress={() => setShabbatSlot('vendredi_soir')}
-              >
-                <Text style={styles.shabbatSlotIcon}>🕯️</Text>
-                <Text
-                  style={[
-                    styles.shabbatSlotText,
-                    shabbatSlot === 'vendredi_soir' && styles.shabbatSlotTextActive,
-                  ]}
-                >
-                  Vendredi Soir
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.shabbatSlotBtn,
-                  shabbatSlot === 'samedi_midi' && styles.shabbatSlotBtnActive,
-                ]}
-                onPress={() => setShabbatSlot('samedi_midi')}
-              >
-                <Text style={styles.shabbatSlotIcon}>☀️</Text>
-                <Text
-                  style={[
-                    styles.shabbatSlotText,
-                    shabbatSlot === 'samedi_midi' && styles.shabbatSlotTextActive,
-                  ]}
-                >
-                  Samedi Midi
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.shabbatSlotBtn,
-                  shabbatSlot === 'les_deux' && styles.shabbatSlotBtnActive,
-                ]}
-                onPress={() => setShabbatSlot('les_deux')}
-              >
-                <Text style={styles.shabbatSlotIcon}>✨</Text>
-                <Text
-                  style={[
-                    styles.shabbatSlotText,
-                    shabbatSlot === 'les_deux' && styles.shabbatSlotTextActive,
-                  ]}
-                >
-                  Tout le Chabbat
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Random Menu Generator Button */}
+            {/* Banner explaining individual dish assignment */}
             <View style={styles.chabbatBanner}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.chabbatBannerTitle}>👑 Festin de Chabbat</Text>
                 <Text style={styles.chabbatBannerSubtitle}>
-                  Composez une table généreuse avec plusieurs plats (Couscous + Boulettes + Slata...)
+                  Attribuez directement chaque plat au Vendredi soir, au Samedi midi, ou aux deux !
                 </Text>
               </View>
-              <TouchableOpacity style={styles.chabbatMagicBtn} onPress={handleRandomChabbatMenu}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-                <Text style={styles.chabbatMagicBtnText}>Idée menu</Text>
-              </TouchableOpacity>
             </View>
 
-            {/* Selected Summary Pill */}
-            {selectedChabbatDishIds.size > 0 && (
+            {/* SUMMARY BAR: LIVE COUNT OF VENDREDI & SAMEDI */}
+            {(vendrediDishIds.size > 0 || samediDishIds.size > 0) && (
               <View style={styles.chabbatSummaryBox}>
                 <View style={styles.chabbatSummaryTop}>
                   <Text style={styles.chabbatSummaryTitle}>
-                    🍽️ {selectedChabbatDishIds.size} plat(s) sélectionné(s) pour la table :
+                    🍽️ Menu en cours de composition :
                   </Text>
-                  <TouchableOpacity onPress={() => setSelectedChabbatDishIds(new Set())}>
-                    <Text style={styles.previewResetText}>Effacer tout</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setVendrediDishIds(new Set());
+                      setSamediDishIds(new Set());
+                    }}
+                  >
+                    <Text style={styles.previewResetText}>Tout effacer</Text>
                   </TouchableOpacity>
                 </View>
 
-                <View style={styles.chabbatSelectedPills}>
-                  {userDishes
-                    .filter(d => selectedChabbatDishIds.has(d.id))
-                    .map(d => (
-                      <TouchableOpacity
-                        key={d.id}
-                        style={styles.chabbatSelectedPill}
-                        onPress={() => toggleChabbatDish(d.id)}
-                      >
-                        <Text style={styles.chabbatSelectedPillText}>{d.name}</Text>
-                        <Ionicons name="close-circle" size={14} color={colors.shabbat} />
-                      </TouchableOpacity>
-                    ))}
+                {/* Vendredi soir row */}
+                <View style={styles.summarySlotBlock}>
+                  <View style={styles.summarySlotHeader}>
+                    <Text style={styles.summarySlotTitle}>
+                      🕯️ Vendredi Soir ({vendrediDishIds.size} plats)
+                    </Text>
+                  </View>
+                  <View style={styles.chabbatSelectedPills}>
+                    {userDishes
+                      .filter(d => vendrediDishIds.has(d.id))
+                      .map(d => (
+                        <TouchableOpacity
+                          key={d.id}
+                          style={styles.chabbatSelectedPillFriday}
+                          onPress={() => toggleVendrediDish(d.id)}
+                        >
+                          <Text style={styles.chabbatSelectedPillFridayText}>{d.name}</Text>
+                          <Ionicons name="close-circle" size={14} color={colors.shabbat} />
+                        </TouchableOpacity>
+                      ))}
+                    {vendrediDishIds.size === 0 && (
+                      <Text style={styles.emptySlotHint}>Aucun plat assigné au vendredi soir</Text>
+                    )}
+                  </View>
+                </View>
+
+                {/* Samedi midi row */}
+                <View style={styles.summarySlotBlock}>
+                  <View style={styles.summarySlotHeader}>
+                    <Text style={styles.summarySlotTitle}>
+                      ☀️ Samedi Midi ({samediDishIds.size} plats)
+                    </Text>
+                  </View>
+                  <View style={styles.chabbatSelectedPills}>
+                    {userDishes
+                      .filter(d => samediDishIds.has(d.id))
+                      .map(d => (
+                        <TouchableOpacity
+                          key={d.id}
+                          style={styles.chabbatSelectedPillSaturday}
+                          onPress={() => toggleSamediDish(d.id)}
+                        >
+                          <Text style={styles.chabbatSelectedPillSaturdayText}>{d.name}</Text>
+                          <Ionicons name="close-circle" size={14} color="#B45309" />
+                        </TouchableOpacity>
+                      ))}
+                    {samediDishIds.size === 0 && (
+                      <Text style={styles.emptySlotHint}>Aucun plat assigné au samedi midi</Text>
+                    )}
+                  </View>
                 </View>
 
                 <TouchableOpacity style={styles.validateChabbatBtn} onPress={handleValidateChabbatMeal}>
                   <Ionicons name="checkmark-done-circle" size={20} color="#FFFFFF" />
                   <Text style={styles.validateChabbatBtnText}>
-                    Valider le repas ({shabbatSlot === 'vendredi_soir' ? 'Vendredi soir' : shabbatSlot === 'samedi_midi' ? 'Samedi midi' : 'Chabbat complet'})
+                    Valider le festin de Chabbat
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* SECTION: PLATS PRINCIPAUX & SPÉCIALITÉS CHABBAT (MULTI-SELECTION) */}
+            {/* SECTION: PLATS PRINCIPAUX DE CHABBAT */}
             <View style={styles.sectionHeaderRow}>
               <View>
                 <Text style={styles.sectionTitle}>Plats principaux de Chabbat</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Sélectionnez un ou plusieurs plats (ex: Couscous + Boulettes au cumin + Poisson)
+                  Couscous, Pkaïla, Boulettes, Poisson... (classés du moins récent au plus récent)
                 </Text>
               </View>
             </View>
 
-            <View style={styles.chabbatGrid}>
-              {chabbatMains.map(dish => {
-                const isSelected = selectedChabbatDishIds.has(dish.id);
-                return (
-                  <TouchableOpacity
-                    key={dish.id}
-                    style={[
-                      styles.chabbatDishCard,
-                      isSelected && styles.chabbatDishCardSelected,
-                    ]}
-                    onPress={() => toggleChabbatDish(dish.id)}
-                  >
-                    <View style={styles.chabbatCardHeader}>
-                      <Ionicons
-                        name={isSelected ? 'checkbox' : 'square-outline'}
-                        size={22}
-                        color={isSelected ? colors.shabbat : colors.textMuted}
-                      />
-                      <Text style={styles.chabbatCardCuisine}>
-                        {dish.cuisine === 'tunisien'
-                          ? '🥘'
-                          : dish.cuisine === 'israelien'
-                          ? '🧆'
-                          : dish.cuisine === 'italien'
-                          ? '🍝'
-                          : dish.cuisine === 'francais'
-                          ? '🥖'
-                          : '🍽️'}
-                      </Text>
-                    </View>
-                    <Text
-                      style={[
-                        styles.chabbatCardName,
-                        isSelected && styles.chabbatCardNameSelected,
-                      ]}
-                    >
-                      {dish.name}
-                    </Text>
-                    {dish.description ? (
-                      <Text style={styles.chabbatCardDesc} numberOfLines={2}>
-                        {dish.description}
-                      </Text>
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.chabbatCardsList}>
+              {sortedChabbatMains.map(dish => renderChabbatDishItem(dish))}
             </View>
 
-            {/* SECTION: ENTRÉES, SALADES & KÉMIA */}
+            {/* SECTION: ENTRÉES & SALADES CUITES */}
             <View style={styles.sectionHeaderRow}>
               <View>
                 <Text style={styles.sectionTitle}>Entrées, Salades cuites & Kémia</Text>
-                <Text style={styles.sectionSubtitle}>Slata Méchouia, carottes, navets roses, brik...</Text>
+                <Text style={styles.sectionSubtitle}>Slata Méchouia, carottes, navets roses, matbucha...</Text>
               </View>
             </View>
 
-            <View style={styles.chipsWrap}>
-              {chabbatEntrees.map(dish => {
-                const isSelected = selectedChabbatDishIds.has(dish.id);
-                return (
-                  <TouchableOpacity
-                    key={dish.id}
-                    style={[
-                      styles.chipBtn,
-                      isSelected && styles.chipBtnSelectedShabbat,
-                    ]}
-                    onPress={() => toggleChabbatDish(dish.id)}
-                  >
-                    <Text style={styles.chipIcon}>🥗</Text>
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                      {dish.name}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.chabbatCardsList}>
+              {sortedChabbatEntrees.map(dish => renderChabbatDishItem(dish))}
             </View>
 
             {/* SECTION: ACCOMPAGNEMENTS DE CHABBAT */}
-            {chabbatSides.length > 0 && (
+            {sortedChabbatSides.length > 0 && (
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeaderRow}>
                   <Text style={styles.sectionTitle}>Accompagnements</Text>
                 </View>
-                <View style={styles.chipsWrap}>
-                  {chabbatSides.map(dish => {
-                    const isSelected = selectedChabbatDishIds.has(dish.id);
-                    return (
-                      <TouchableOpacity
-                        key={dish.id}
-                        style={[
-                          styles.chipBtn,
-                          isSelected && styles.chipBtnSelectedShabbat,
-                        ]}
-                        onPress={() => toggleChabbatDish(dish.id)}
-                      >
-                        <Text style={styles.chipIcon}>🍟</Text>
-                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                          {dish.name}
-                        </Text>
-                        {isSelected && (
-                          <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
+                <View style={styles.chabbatCardsList}>
+                  {sortedChabbatSides.map(dish => renderChabbatDishItem(dish))}
                 </View>
               </View>
             )}
 
             {/* SECTION: DESSERTS DE CHABBAT */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeaderRow}>
-                <View>
-                  <Text style={styles.sectionTitle}>Desserts de Chabbat</Text>
-                  <Text style={styles.sectionSubtitle}>Salade d'oranges, Makrouds, douceurs...</Text>
+            {sortedChabbatDesserts.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>Desserts de fête</Text>
+                </View>
+                <View style={styles.chabbatCardsList}>
+                  {sortedChabbatDesserts.map(dish => renderChabbatDishItem(dish))}
                 </View>
               </View>
-              <View style={styles.chipsWrap}>
-                {chabbatDesserts.map(dish => {
-                  const isSelected = selectedChabbatDishIds.has(dish.id);
-                  return (
-                    <TouchableOpacity
-                      key={dish.id}
-                      style={[
-                        styles.chipBtn,
-                        isSelected && styles.chipBtnSelectedShabbat,
-                      ]}
-                      onPress={() => toggleChabbatDish(dish.id)}
-                    >
-                      <Text style={styles.chipIcon}>🍊</Text>
-                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                        {dish.name}
-                      </Text>
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+            )}
           </View>
         )}
 
@@ -1073,6 +1108,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
   },
+  dateBadgePill: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  dateBadgePillNever: {
+    backgroundColor: '#ECFDF5',
+  },
+  dateBadgePillText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  dateBadgePillTextNever: {
+    color: '#059669',
+    fontWeight: '700',
+  },
   chipsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1097,10 +1151,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#BE185D',
     borderColor: '#BE185D',
   },
-  chipBtnSelectedShabbat: {
-    backgroundColor: colors.shabbat,
-    borderColor: colors.shabbat,
-  },
   chipIcon: {
     fontSize: 14,
     marginRight: 6,
@@ -1114,45 +1164,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  // Chabbat Specific Styles
-  shabbatSlotRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  shabbatSlotBtn: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  shabbatSlotBtnActive: {
-    backgroundColor: colors.shabbatLight,
-    borderColor: colors.shabbat,
-    borderWidth: 2,
-  },
-  shabbatSlotIcon: {
-    fontSize: 18,
-  },
-  shabbatSlotText: {
-    fontSize: 12,
-    fontWeight: '700',
+  chipSubDate: {
+    fontSize: 9.5,
     color: colors.textSecondary,
+    marginTop: 1,
   },
-  shabbatSlotTextActive: {
-    color: colors.shabbat,
-  },
+  // Chabbat Specific Styles
   chabbatBanner: {
     backgroundColor: colors.shabbatLight,
     borderRadius: 16,
     padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#D8CEE8',
@@ -1167,21 +1188,6 @@ const styles = StyleSheet.create({
     color: '#5C4A8A',
     marginTop: 2,
   },
-  chabbatMagicBtn: {
-    backgroundColor: colors.shabbat,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 12,
-    marginLeft: 10,
-  },
-  chabbatMagicBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12.5,
-  },
   chabbatSummaryBox: {
     backgroundColor: colors.card,
     borderRadius: 16,
@@ -1189,6 +1195,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1.5,
     borderColor: colors.shabbat,
+    shadowColor: colors.shabbat,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   chabbatSummaryTop: {
     flexDirection: 'row',
@@ -1201,25 +1212,54 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.shabbatDark,
   },
+  summarySlotBlock: {
+    marginBottom: 10,
+  },
+  summarySlotHeader: {
+    marginBottom: 4,
+  },
+  summarySlotTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.text,
+  },
   chabbatSelectedPills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 12,
   },
-  chabbatSelectedPill: {
+  chabbatSelectedPillFriday: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.shabbatLight,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 12,
-    gap: 6,
+    gap: 5,
   },
-  chabbatSelectedPillText: {
-    fontSize: 12,
+  chabbatSelectedPillFridayText: {
+    fontSize: 11.5,
     fontWeight: '600',
     color: colors.shabbatDark,
+  },
+  chabbatSelectedPillSaturday: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+  },
+  chabbatSelectedPillSaturdayText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  emptySlotHint: {
+    fontSize: 11.5,
+    color: colors.textMuted,
+    fontStyle: 'italic',
   },
   validateChabbatBtn: {
     backgroundColor: colors.shabbat,
@@ -1229,49 +1269,109 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 12,
     gap: 8,
+    marginTop: 6,
   },
   validateChabbatBtnText: {
     color: '#FFFFFF',
     fontSize: 14.5,
     fontWeight: '700',
   },
-  chabbatGrid: {
-    gap: 8,
+  chabbatCardsList: {
+    gap: 10,
     marginBottom: 14,
   },
-  chabbatDishCard: {
+  chabbatCard: {
     backgroundColor: colors.card,
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  chabbatDishCardSelected: {
-    backgroundColor: colors.shabbatLight,
-    borderColor: colors.shabbat,
+  chabbatCardActive: {
     borderWidth: 1.5,
   },
-  chabbatCardHeader: {
+  chabbatCardFridayOnly: {
+    borderColor: colors.shabbat,
+    backgroundColor: '#FAF8FC',
+  },
+  chabbatCardSaturdayOnly: {
+    borderColor: '#D97706',
+    backgroundColor: '#FFFDF7',
+  },
+  chabbatCardBoth: {
+    borderColor: colors.primary,
+    backgroundColor: '#FDFCF7',
+  },
+  chabbatCardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  chabbatCardNameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  chabbatCardCuisine: {
-    fontSize: 16,
   },
   chabbatCardName: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
+    flex: 1,
   },
-  chabbatCardNameSelected: {
-    color: colors.shabbatDark,
+  cuisineIcon: {
+    fontSize: 16,
+    marginLeft: 6,
   },
   chabbatCardDesc: {
     fontSize: 12,
     color: colors.textSecondary,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  chabbatDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 4,
   },
+  chabbatDateBadgeText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  chabbatButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  chabbatSlotToggleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardAlt,
+  },
+  chabbatSlotToggleBtnVendrediActive: {
+    backgroundColor: colors.shabbat,
+    borderColor: colors.shabbat,
+  },
+  chabbatSlotToggleBtnSamediActive: {
+    backgroundColor: '#D97706',
+    borderColor: '#D97706',
+  },
+  chabbatSlotToggleBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  chabbatSlotToggleBtnTextActive: {
+    color: '#FFFFFF',
+  },
 });
-
