@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -96,20 +96,35 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
     });
   }, [userDishes, search, selectedOccasion, selectedType, selectedCuisine]);
 
-  const confirmDelete = (dish: Dish) => {
-    Alert.alert(
-      'Supprimer ce plat',
-      `Voulez-vous retirer "${dish.name}" de votre liste de plats ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => onDeleteDish(dish.id),
-        },
-      ]
-    );
-  };
+  const confirmDelete = useCallback(
+    (dish: Dish) => {
+      Alert.alert(
+        'Supprimer ce plat',
+        `Voulez-vous retirer "${dish.name}" de votre liste de plats ?`,
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Supprimer',
+            style: 'destructive',
+            onPress: () => onDeleteDish(dish.id),
+          },
+        ]
+      );
+    },
+    [onDeleteDish]
+  );
+
+  const renderDishItem = useCallback(
+    ({ item }: { item: Dish }) => (
+      <DishCard
+        dish={item}
+        showLastCooked={true}
+        onEdit={setEditingDish}
+        onDelete={confirmDelete}
+      />
+    ),
+    [confirmDelete]
+  );
 
   return (
     <View style={styles.container}>
@@ -326,14 +341,12 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         data={filteredDishes}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <DishCard
-            dish={item}
-            showLastCooked={true}
-            onEdit={() => setEditingDish(item)}
-            onDelete={() => confirmDelete(item)}
-          />
-        )}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
+        removeClippedSubviews={true}
+        renderItem={renderDishItem}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="restaurant-outline" size={48} color={colors.textMuted} />

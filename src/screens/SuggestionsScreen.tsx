@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -101,20 +101,41 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
     return suggestions.filter(d => isDishImported(d)).length;
   }, [suggestions, importedSet]);
 
-  const confirmDeleteSuggestion = (sug: Dish) => {
-    Alert.alert(
-      'Supprimer la suggestion',
-      `Voulez-vous retirer définitivement "${sug.name}" de la base d’idées ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => onDeleteSuggestion(sug.id),
-        },
-      ]
-    );
-  };
+  const confirmDeleteSuggestion = useCallback(
+    (sug: Dish) => {
+      Alert.alert(
+        'Supprimer la suggestion',
+        `Voulez-vous retirer définitivement "${sug.name}" de la base d’idées ?`,
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Supprimer',
+            style: 'destructive',
+            onPress: () => onDeleteSuggestion(sug.id),
+          },
+        ]
+      );
+    },
+    [onDeleteSuggestion]
+  );
+
+  const renderSuggestionItem = useCallback(
+    ({ item }: { item: Dish }) => {
+      const imported = importedSet.has(item.id) || importedSet.has(item.name.toLowerCase().trim());
+      return (
+        <DishCard
+          dish={item}
+          compact={true}
+          isSuggestionView={true}
+          isImportedInUserDishes={imported}
+          onToggleImport={onToggleSuggestion}
+          onEdit={setEditingSuggestion}
+          onDelete={confirmDeleteSuggestion}
+        />
+      );
+    },
+    [importedSet, onToggleSuggestion, confirmDeleteSuggestion]
+  );
 
   return (
     <View style={styles.container}>
@@ -283,23 +304,12 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
         data={filteredSuggestions}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
-        initialNumToRender={20}
-        maxToRenderPerBatch={25}
-        windowSize={10}
-        renderItem={({ item }) => {
-          const imported = isDishImported(item);
-          return (
-            <DishCard
-              dish={item}
-              compact={true}
-              isSuggestionView={true}
-              isImportedInUserDishes={imported}
-              onToggleImport={() => onToggleSuggestion(item)}
-              onEdit={() => setEditingSuggestion(item)}
-              onDelete={() => confirmDeleteSuggestion(item)}
-            />
-          );
-        }}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
+        removeClippedSubviews={true}
+        renderItem={renderSuggestionItem}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="search" size={36} color={colors.textMuted} />

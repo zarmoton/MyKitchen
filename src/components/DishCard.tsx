@@ -1,25 +1,25 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Dish } from '../types';
 import { colors } from '../theme/colors';
 import { formatLastCooked } from '../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 
-interface DishCardProps {
+export interface DishCardProps {
   dish: Dish;
-  onPress?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  onPress?: ((dish: Dish) => void) | (() => void);
+  onEdit?: ((dish: Dish) => void) | (() => void);
+  onDelete?: ((dish: Dish) => void) | (() => void);
   isSelected?: boolean;
   isSuggestionView?: boolean;
   isImportedInUserDishes?: boolean;
-  onToggleImport?: () => void;
+  onToggleImport?: ((dish: Dish) => void) | (() => void);
   selectable?: boolean;
   showLastCooked?: boolean;
   compact?: boolean;
 }
 
-export const DishCard: React.FC<DishCardProps> = ({
+const DishCardComponent: React.FC<DishCardProps> = ({
   dish,
   onPress,
   onEdit,
@@ -32,7 +32,7 @@ export const DishCard: React.FC<DishCardProps> = ({
   showLastCooked = false,
   compact = isSuggestionView,
 }) => {
-  const getTypeBadge = () => {
+  const typeBadge = useMemo(() => {
     switch (dish.type) {
       case 'complet':
         return { label: 'Plat complet', icon: 'restaurant-outline', bg: '#E0F2FE', color: '#0369A1' };
@@ -43,9 +43,9 @@ export const DishCard: React.FC<DishCardProps> = ({
       case 'dessert':
         return { label: 'Dessert', icon: 'ice-cream-outline', bg: '#FDF2F8', color: '#BE185D' };
     }
-  };
+  }, [dish.type]);
 
-  const getCuisineBadge = () => {
+  const cuisineBadge = useMemo(() => {
     switch (dish.cuisine) {
       case 'tunisien':
         return { label: 'Tunisien', bg: colors.badgeTunisienBg, color: colors.badgeTunisien };
@@ -58,9 +58,9 @@ export const DishCard: React.FC<DishCardProps> = ({
       case 'classique':
         return { label: 'Classique', bg: colors.badgeClassiqueBg, color: colors.badgeClassique };
     }
-  };
+  }, [dish.cuisine]);
 
-  const getOccasionBadge = () => {
+  const occasionBadge = useMemo(() => {
     switch (dish.occasion) {
       case 'semaine':
         return { label: 'Semaine', bg: colors.semaineLight, color: colors.semaine };
@@ -73,12 +73,28 @@ export const DishCard: React.FC<DishCardProps> = ({
       case 'tous':
         return { label: 'Semaine & Chabbat', bg: '#F3F4F6', color: '#4B5563' };
     }
-  };
+  }, [dish.occasion]);
 
-  const typeBadge = getTypeBadge();
-  const cuisineBadge = getCuisineBadge();
-  const occasionBadge = getOccasionBadge();
-  const lastCookedInfo = formatLastCooked(dish.lastCookedDate);
+  const lastCookedInfo = useMemo(() => {
+    return formatLastCooked(dish.lastCookedDate);
+  }, [dish.lastCookedDate]);
+
+  const handlePress = useCallback(() => {
+    if (onPress) (onPress as any)(dish);
+    else if (onToggleImport) (onToggleImport as any)(dish);
+  }, [onPress, onToggleImport, dish]);
+
+  const handleEdit = useCallback(() => {
+    if (onEdit) (onEdit as any)(dish);
+  }, [onEdit, dish]);
+
+  const handleDelete = useCallback(() => {
+    if (onDelete) (onDelete as any)(dish);
+  }, [onDelete, dish]);
+
+  const handleToggleImport = useCallback(() => {
+    if (onToggleImport) (onToggleImport as any)(dish);
+  }, [onToggleImport, dish]);
 
   // In suggestion view: If already imported to "Mes Plats", the line turns green!
   const isGreenHighlight = isSuggestionView && isImportedInUserDishes;
@@ -86,7 +102,7 @@ export const DishCard: React.FC<DishCardProps> = ({
   return (
     <TouchableOpacity
       activeOpacity={0.8}
-      onPress={onPress || onToggleImport}
+      onPress={handlePress}
       style={[
         styles.card,
         compact && styles.compactCard,
@@ -197,7 +213,7 @@ export const DishCard: React.FC<DishCardProps> = ({
           {onEdit && (
             <TouchableOpacity
               style={[styles.actionIconBtn, compact && styles.compactActionIconBtn]}
-              onPress={onEdit}
+              onPress={handleEdit}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons name="pencil-outline" size={compact ? 14 : 17} color={colors.textSecondary} />
@@ -207,7 +223,7 @@ export const DishCard: React.FC<DishCardProps> = ({
           {onDelete && (
             <TouchableOpacity
               style={[styles.actionIconBtn, compact && styles.compactActionIconBtn]}
-              onPress={onDelete}
+              onPress={handleDelete}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons name="trash-outline" size={compact ? 14 : 17} color={colors.danger} />
@@ -221,7 +237,7 @@ export const DishCard: React.FC<DishCardProps> = ({
                 compact && styles.compactActionBtn,
                 isGreenHighlight ? styles.actionBtnRemove : styles.actionBtnAdd,
               ]}
-              onPress={onToggleImport}
+              onPress={handleToggleImport}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons
@@ -236,6 +252,8 @@ export const DishCard: React.FC<DishCardProps> = ({
     </TouchableOpacity>
   );
 };
+
+export const DishCard = React.memo(DishCardComponent);
 
 const styles = StyleSheet.create({
   card: {
