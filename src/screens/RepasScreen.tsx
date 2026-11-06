@@ -32,6 +32,9 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   // Mode initialized based on day of week: Mercredi, Jeudi, Vendredi -> Chabbat. Sinon Semaine.
   const [mealMode, setMealMode] = useState<MealHistoryOccasion>(dayInfo.defaultMode);
 
+  // Dish type filter for page 1 ('all', 'plats', 'complet', 'principal', 'entrees', 'accompagnement', 'dessert')
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
   // Semaine state
   const [semainePlat, setSemainePlat] = useState<Dish | null>(null);
   const [semaineSide, setSemaineSide] = useState<Dish | null>(null);
@@ -47,6 +50,7 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   useEffect(() => {
     if (!prefilledMeal) return;
     setMealMode(prefilledMeal.occasion);
+    setTypeFilter('all');
     if (prefilledMeal.occasion === 'semaine') {
       setSemainePlat(prefilledMeal.mainDishes?.[0] || null);
       setSemaineSide(prefilledMeal.sides?.[0] || null);
@@ -92,6 +96,20 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
     const list = semaineDishes.filter(d => d.type === 'complet' || d.type === 'principal');
     return sortByCookingDate(list);
   }, [semaineDishes]);
+
+  const sortedSemaineComplets = useMemo(() => {
+    return sortedSemaineMains.filter(d => d.type === 'complet');
+  }, [sortedSemaineMains]);
+
+  const sortedSemainePrincipals = useMemo(() => {
+    return sortedSemaineMains.filter(d => d.type === 'principal');
+  }, [sortedSemaineMains]);
+
+  const displayedSemaineMains = useMemo(() => {
+    if (typeFilter === 'complet') return sortedSemaineComplets;
+    if (typeFilter === 'principal') return sortedSemainePrincipals;
+    return sortedSemaineMains;
+  }, [typeFilter, sortedSemaineMains, sortedSemaineComplets, sortedSemainePrincipals]);
 
   const sortedSides = useMemo(() => {
     const list = userDishes.filter(d => d.type === 'accompagnement');
@@ -368,7 +386,7 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
     setIsSamediAbsent(false);
   };
 
-  // Helper component for a Chabbat card with Vendredi & Samedi toggle buttons directly on it
+  // Helper component for a Chabbat card with Vendredi & Samedi toggle buttons directly inline with the date
   const renderChabbatDishItem = (dish: Dish) => {
     const isVendredi = vendrediDishIds.has(dish.id);
     const isSamedi = samediDishIds.has(dish.id);
@@ -386,95 +404,97 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
           isVendredi && isSamedi && styles.chabbatCardBoth,
         ]}
       >
-        <View style={styles.chabbatCardTop}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.chabbatCardNameRow}>
-              <Text style={styles.chabbatCardName}>{dish.name}</Text>
-              <Text style={styles.cuisineIcon}>
-                {dish.cuisine === 'tunisien'
-                  ? '🥘'
-                  : dish.cuisine === 'israelien'
-                  ? '🧆'
-                  : dish.cuisine === 'italien'
-                  ? '🍝'
-                  : dish.cuisine === 'francais'
-                  ? '🥖'
-                  : '🍽️'}
-              </Text>
-            </View>
+        <View style={styles.chabbatCardNameRow}>
+          <Text style={styles.chabbatCardName}>{dish.name}</Text>
+          <Text style={styles.cuisineIcon}>
+            {dish.cuisine === 'tunisien'
+              ? '🥘'
+              : dish.cuisine === 'israelien'
+              ? '🧆'
+              : dish.cuisine === 'italien'
+              ? '🍝'
+              : dish.cuisine === 'francais'
+              ? '🥖'
+              : dish.cuisine === 'bbq'
+              ? '🔥'
+              : '🍽️'}
+          </Text>
+        </View>
 
-            {dish.description ? (
-              <Text style={styles.chabbatCardDesc} numberOfLines={2}>
-                {dish.description}
-              </Text>
-            ) : null}
+        {dish.description ? (
+          <Text style={styles.chabbatCardDesc} numberOfLines={2}>
+            {dish.description}
+          </Text>
+        ) : null}
 
-            {/* Date info pill */}
-            <View style={styles.chabbatDateBadge}>
+        {/* Footer row: Date badge on the left, Friday / Saturday toggle buttons on the right */}
+        <View style={styles.chabbatFooterRow}>
+          <View style={[styles.chabbatDateBadge, lastCooked.isNever && styles.chabbatDateBadgeNever]}>
+            <Ionicons
+              name="calendar-outline"
+              size={11}
+              color={lastCooked.isNever ? '#059669' : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.chabbatDateBadgeText,
+                lastCooked.isNever && styles.chabbatDateBadgeTextNever,
+              ]}
+              numberOfLines={1}
+            >
+              {lastCooked.text}
+            </Text>
+          </View>
+
+          <View style={styles.chabbatInlineButtons}>
+            <TouchableOpacity
+              style={[
+                styles.chabbatInlineBtn,
+                styles.chabbatInlineBtnVendredi,
+                isVendredi && styles.chabbatInlineBtnVendrediActive,
+              ]}
+              onPress={() => toggleVendrediDish(dish.id)}
+              activeOpacity={0.7}
+            >
               <Ionicons
-                name="calendar-outline"
-                size={11}
-                color={lastCooked.isNever ? '#059669' : colors.textSecondary}
+                name={isVendredi ? 'checkmark-circle' : 'add-circle-outline'}
+                size={13}
+                color={isVendredi ? '#FFFFFF' : colors.shabbat}
               />
               <Text
                 style={[
-                  styles.chabbatDateBadgeText,
-                  lastCooked.isNever && { color: '#059669', fontWeight: '700' },
+                  styles.chabbatInlineBtnText,
+                  isVendredi && styles.chabbatInlineBtnTextActive,
                 ]}
               >
-                {lastCooked.text}
+                🕯️ Ven. soir
               </Text>
-            </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.chabbatInlineBtn,
+                styles.chabbatInlineBtnSamedi,
+                isSamedi && styles.chabbatInlineBtnSamediActive,
+              ]}
+              onPress={() => toggleSamediDish(dish.id)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={isSamedi ? 'checkmark-circle' : 'add-circle-outline'}
+                size={13}
+                color={isSamedi ? '#FFFFFF' : '#B45309'}
+              />
+              <Text
+                style={[
+                  styles.chabbatInlineBtnText,
+                  isSamedi && styles.chabbatInlineBtnTextActive,
+                ]}
+              >
+                ☀️ Sam. midi
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
-
-        {/* The two individual toggle buttons for each dish */}
-        <View style={styles.chabbatButtonsRow}>
-          <TouchableOpacity
-            style={[
-              styles.chabbatSlotToggleBtn,
-              isVendredi && styles.chabbatSlotToggleBtnVendrediActive,
-            ]}
-            onPress={() => toggleVendrediDish(dish.id)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={isVendredi ? 'checkmark-circle' : 'ellipse-outline'}
-              size={16}
-              color={isVendredi ? '#FFFFFF' : colors.shabbat}
-            />
-            <Text
-              style={[
-                styles.chabbatSlotToggleBtnText,
-                isVendredi && styles.chabbatSlotToggleBtnTextActive,
-              ]}
-            >
-              🕯️ Vendredi Soir
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.chabbatSlotToggleBtn,
-              isSamedi && styles.chabbatSlotToggleBtnSamediActive,
-            ]}
-            onPress={() => toggleSamediDish(dish.id)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={isSamedi ? 'checkmark-circle' : 'ellipse-outline'}
-              size={16}
-              color={isSamedi ? '#FFFFFF' : '#B45309'}
-            />
-            <Text
-              style={[
-                styles.chabbatSlotToggleBtnText,
-                isSamedi && styles.chabbatSlotToggleBtnTextActive,
-              ]}
-            >
-              ☀️ Samedi Midi
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -490,7 +510,10 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               styles.segmentBtn,
               mealMode === 'semaine' && styles.segmentBtnActiveSemaine,
             ]}
-            onPress={() => setMealMode('semaine')}
+            onPress={() => {
+              setMealMode('semaine');
+              setTypeFilter('all');
+            }}
           >
             <Text style={styles.segmentIcon}>📅</Text>
             <Text
@@ -508,7 +531,10 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               styles.segmentBtn,
               mealMode === 'chabbat' && styles.segmentBtnActiveShabbat,
             ]}
-            onPress={() => setMealMode('chabbat')}
+            onPress={() => {
+              setMealMode('chabbat');
+              setTypeFilter('all');
+            }}
           >
             <Text style={styles.segmentIcon}>🕯️</Text>
             <Text
@@ -535,6 +561,373 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               : `Nous sommes ${dayInfo.dayName} : Mode Semaine actif par défaut.`}
           </Text>
         </View>
+      </View>
+
+      {/* Type Filter Bar */}
+      <View style={styles.typeFilterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.typeFilterScroll}
+        >
+          {mealMode === 'semaine' ? (
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'all' && styles.typeFilterChipActiveSemaine,
+                ]}
+                onPress={() => setTypeFilter('all')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'all' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  Tous
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'all' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'all' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {semaineDishes.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'plats' && styles.typeFilterChipActiveSemaine,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'plats' ? 'all' : 'plats')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'plats' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🍲 Plats
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'plats' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'plats' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedSemaineMains.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'complet' && styles.typeFilterChipActiveSemaine,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'complet' ? 'all' : 'complet')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'complet' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🍲 Plats complets
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'complet' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'complet' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedSemaineComplets.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'principal' && styles.typeFilterChipActiveSemaine,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'principal' ? 'all' : 'principal')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'principal' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🥩 À accompagner
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'principal' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'principal' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedSemainePrincipals.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'accompagnement' && styles.typeFilterChipActiveSemaine,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'accompagnement' ? 'all' : 'accompagnement')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'accompagnement' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🍟 Accompagnements
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'accompagnement' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'accompagnement' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedSides.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'dessert' && styles.typeFilterChipActiveSemaine,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'dessert' ? 'all' : 'dessert')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'dessert' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🍰 Desserts
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'dessert' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'dessert' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedDesserts.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'all' && styles.typeFilterChipActiveShabbat,
+                ]}
+                onPress={() => setTypeFilter('all')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'all' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  Tous
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'all' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'all' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {chabbatDishes.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'plats' && styles.typeFilterChipActiveShabbat,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'plats' ? 'all' : 'plats')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'plats' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🍲 Plats
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'plats' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'plats' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedChabbatMains.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'entrees' && styles.typeFilterChipActiveShabbat,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'entrees' ? 'all' : 'entrees')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'entrees' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🥗 Entrées & Kémia
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'entrees' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'entrees' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedChabbatEntrees.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'accompagnement' && styles.typeFilterChipActiveShabbat,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'accompagnement' ? 'all' : 'accompagnement')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'accompagnement' && styles.typeFilterChipActiveShabbat,
+                  ]}
+                >
+                  🍟 Accompagnements
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'accompagnement' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'accompagnement' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedChabbatSides.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeFilterChip,
+                  typeFilter === 'dessert' && styles.typeFilterChipActiveShabbat,
+                ]}
+                onPress={() => setTypeFilter(typeFilter === 'dessert' ? 'all' : 'dessert')}
+              >
+                <Text
+                  style={[
+                    styles.typeFilterChipText,
+                    typeFilter === 'dessert' && styles.typeFilterChipTextActive,
+                  ]}
+                >
+                  🍰 Desserts
+                </Text>
+                <View
+                  style={[
+                    styles.typeFilterChipBadge,
+                    typeFilter === 'dessert' && styles.typeFilterChipBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeFilterChipBadgeText,
+                      typeFilter === 'dessert' && styles.typeFilterChipBadgeTextActive,
+                    ]}
+                  >
+                    {sortedChabbatDesserts.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
       </View>
 
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
@@ -631,151 +1024,194 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
             )}
 
             {/* SECTION 1: LE PLAT PRINCIPAL (TRIÉ PAR DERNIÈRE FOIS CUISINÉ) */}
-            <View style={styles.sectionHeaderRow}>
+            {(typeFilter === 'all' || typeFilter === 'plats' || typeFilter === 'complet' || typeFilter === 'principal') && (
               <View>
-                <Text style={styles.sectionTitle}>1. Choisir le plat</Text>
-                <Text style={styles.sectionSubtitle}>
-                  Classés du moins récemment cuisiné (en haut) au plus récent (en bas)
-                </Text>
+                <View style={styles.sectionHeaderRow}>
+                  <View>
+                    <Text style={styles.sectionTitle}>
+                      {typeFilter === 'complet'
+                        ? '1. Plats complets'
+                        : typeFilter === 'principal'
+                        ? '1. Plats à accompagner'
+                        : '1. Choisir le plat'}
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Classés du moins récemment cuisiné (en haut) au plus récent (en bas)
+                    </Text>
+                  </View>
+                  <Text style={styles.sectionCounter}>{displayedSemaineMains.length} choix</Text>
+                </View>
+
+                {displayedSemaineMains.length === 0 ? (
+                  <View style={styles.emptyFilterState}>
+                    <Text style={styles.emptyFilterText}>Aucun plat correspondant dans vos plats.</Text>
+                    <TouchableOpacity style={styles.emptyFilterBtn} onPress={onNavigateToSuggestions}>
+                      <Text style={styles.emptyFilterBtnText}>💡 Voir les suggestions</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.dishesGrid}>
+                    {displayedSemaineMains.map(dish => {
+                      const isSelected = semainePlat?.id === dish.id;
+                      const lastCooked = formatLastCooked(dish.lastCookedDate);
+
+                      return (
+                        <TouchableOpacity
+                          key={dish.id}
+                          style={[
+                            styles.choiceCard,
+                            isSelected && styles.choiceCardSelected,
+                          ]}
+                          onPress={() => {
+                            setSemainePlat(dish);
+                            if (dish.type === 'complet') {
+                              setSemaineSide(null);
+                            }
+                          }}
+                        >
+                          <View style={styles.choiceHeader}>
+                            <Text style={styles.choiceIcon}>
+                              {dish.type === 'complet' ? '🍲' : '🥩'}
+                            </Text>
+                            {isSelected && (
+                              <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                            )}
+                          </View>
+                          <Text style={[styles.choiceName, isSelected && styles.choiceNameSelected]} numberOfLines={2}>
+                            {dish.name}
+                          </Text>
+                          <Text style={styles.choiceType}>
+                            {dish.type === 'complet' ? 'Plat complet' : 'À accompagner'}
+                          </Text>
+
+                          {/* Date badge */}
+                          <View style={[styles.dateBadgePill, lastCooked.isNever && styles.dateBadgePillNever]}>
+                            <Text
+                              style={[
+                                styles.dateBadgePillText,
+                                lastCooked.isNever && styles.dateBadgePillTextNever,
+                              ]}
+                            >
+                              {lastCooked.text}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
-              <Text style={styles.sectionCounter}>{sortedSemaineMains.length} choix</Text>
-            </View>
-
-            <View style={styles.dishesGrid}>
-              {sortedSemaineMains.map(dish => {
-                const isSelected = semainePlat?.id === dish.id;
-                const lastCooked = formatLastCooked(dish.lastCookedDate);
-
-                return (
-                  <TouchableOpacity
-                    key={dish.id}
-                    style={[
-                      styles.choiceCard,
-                      isSelected && styles.choiceCardSelected,
-                    ]}
-                    onPress={() => {
-                      setSemainePlat(dish);
-                      if (dish.type === 'complet') {
-                        setSemaineSide(null);
-                      }
-                    }}
-                  >
-                    <View style={styles.choiceHeader}>
-                      <Text style={styles.choiceIcon}>
-                        {dish.type === 'complet' ? '🍲' : '🥩'}
-                      </Text>
-                      {isSelected && (
-                        <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                      )}
-                    </View>
-                    <Text style={[styles.choiceName, isSelected && styles.choiceNameSelected]} numberOfLines={2}>
-                      {dish.name}
-                    </Text>
-                    <Text style={styles.choiceType}>
-                      {dish.type === 'complet' ? 'Plat complet' : 'À accompagner'}
-                    </Text>
-
-                    {/* Date badge */}
-                    <View style={[styles.dateBadgePill, lastCooked.isNever && styles.dateBadgePillNever]}>
-                      <Text
-                        style={[
-                          styles.dateBadgePillText,
-                          lastCooked.isNever && styles.dateBadgePillTextNever,
-                        ]}
-                      >
-                        {lastCooked.text}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            )}
 
             {/* SECTION 2: ACCOMPAGNEMENT */}
-            <View
-              style={[
-                styles.sectionContainer,
-                semainePlat?.type === 'principal' && styles.sectionHighlighted,
-              ]}
-            >
-              <View style={styles.sectionHeaderRow}>
-                <View>
-                  <Text style={styles.sectionTitle}>
-                    2. Choisir l'accompagnement {semainePlat?.type === 'principal' && '⚠️ (Requis)'}
-                  </Text>
-                  <Text style={styles.sectionSubtitle}>
-                    {semainePlat?.type === 'principal'
-                      ? 'Nécessaire pour compléter votre viande ou poisson'
-                      : 'Optionnel si vous souhaitez une salade ou garniture'}
-                  </Text>
+            {(typeFilter === 'all' || typeFilter === 'accompagnement') && (
+              <View
+                style={[
+                  styles.sectionContainer,
+                  semainePlat?.type === 'principal' && styles.sectionHighlighted,
+                ]}
+              >
+                <View style={styles.sectionHeaderRow}>
+                  <View>
+                    <Text style={styles.sectionTitle}>
+                      2. Choisir l'accompagnement {semainePlat?.type === 'principal' && '⚠️ (Requis)'}
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {semainePlat?.type === 'principal'
+                        ? 'Nécessaire pour compléter votre viande ou poisson'
+                        : 'Optionnel si vous souhaitez une salade ou garniture'}
+                    </Text>
+                  </View>
+                  <Text style={styles.sectionCounter}>{sortedSides.length} choix</Text>
                 </View>
-              </View>
 
-              <View style={styles.chipsWrap}>
-                {sortedSides.map(side => {
-                  const isSelected = semaineSide?.id === side.id;
-                  const lastCooked = formatLastCooked(side.lastCookedDate);
-
-                  return (
-                    <TouchableOpacity
-                      key={side.id}
-                      style={[
-                        styles.chipBtn,
-                        isSelected && styles.chipBtnSelected,
-                      ]}
-                      onPress={() => setSemaineSide(isSelected ? null : side)}
-                    >
-                      <Text style={styles.chipIcon}>🍟</Text>
-                      <View>
-                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                          {side.name}
-                        </Text>
-                        <Text style={[styles.chipSubDate, isSelected && { color: '#FFFFFF' }]}>
-                          {lastCooked.text}
-                        </Text>
-                      </View>
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
-                      )}
+                {sortedSides.length === 0 ? (
+                  <View style={styles.emptyFilterState}>
+                    <Text style={styles.emptyFilterText}>Aucun accompagnement dans vos plats.</Text>
+                    <TouchableOpacity style={styles.emptyFilterBtn} onPress={onNavigateToSuggestions}>
+                      <Text style={styles.emptyFilterBtnText}>💡 Voir les suggestions</Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  </View>
+                ) : (
+                  <View style={styles.chipsWrap}>
+                    {sortedSides.map(side => {
+                      const isSelected = semaineSide?.id === side.id;
+                      const lastCooked = formatLastCooked(side.lastCookedDate);
+
+                      return (
+                        <TouchableOpacity
+                          key={side.id}
+                          style={[
+                            styles.chipBtn,
+                            isSelected && styles.chipBtnSelected,
+                          ]}
+                          onPress={() => setSemaineSide(isSelected ? null : side)}
+                        >
+                          <Text style={styles.chipIcon}>🍟</Text>
+                          <View>
+                            <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                              {side.name}
+                            </Text>
+                            <Text style={[styles.chipSubDate, isSelected && { color: '#FFFFFF' }]}>
+                              {lastCooked.text}
+                            </Text>
+                          </View>
+                          {isSelected && (
+                            <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
-            </View>
+            )}
 
             {/* SECTION 3: DESSERT */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeaderRow}>
-                <View>
-                  <Text style={styles.sectionTitle}>3. Un dessert ? (Optionnel)</Text>
-                  <Text style={styles.sectionSubtitle}>Pour terminer sur une note sucrée</Text>
+            {(typeFilter === 'all' || typeFilter === 'dessert') && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeaderRow}>
+                  <View>
+                    <Text style={styles.sectionTitle}>3. Un dessert ? (Optionnel)</Text>
+                    <Text style={styles.sectionSubtitle}>Pour terminer sur une note sucrée</Text>
+                  </View>
+                  <Text style={styles.sectionCounter}>{sortedDesserts.length} choix</Text>
                 </View>
-              </View>
 
-              <View style={styles.chipsWrap}>
-                {sortedDesserts.map(dessert => {
-                  const isSelected = semaineDessert?.id === dessert.id;
-                  return (
-                    <TouchableOpacity
-                      key={dessert.id}
-                      style={[
-                        styles.chipBtn,
-                        isSelected && styles.chipBtnSelectedDessert,
-                      ]}
-                      onPress={() => setSemaineDessert(isSelected ? null : dessert)}
-                    >
-                      <Text style={styles.chipIcon}>🍰</Text>
-                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                        {dessert.name}
-                      </Text>
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
-                      )}
+                {sortedDesserts.length === 0 ? (
+                  <View style={styles.emptyFilterState}>
+                    <Text style={styles.emptyFilterText}>Aucun dessert dans vos plats.</Text>
+                    <TouchableOpacity style={styles.emptyFilterBtn} onPress={onNavigateToSuggestions}>
+                      <Text style={styles.emptyFilterBtnText}>💡 Voir les suggestions</Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  </View>
+                ) : (
+                  <View style={styles.chipsWrap}>
+                    {sortedDesserts.map(dessert => {
+                      const isSelected = semaineDessert?.id === dessert.id;
+                      return (
+                        <TouchableOpacity
+                          key={dessert.id}
+                          style={[
+                            styles.chipBtn,
+                            isSelected && styles.chipBtnSelectedDessert,
+                          ]}
+                          onPress={() => setSemaineDessert(isSelected ? null : dessert)}
+                        >
+                          <Text style={styles.chipIcon}>🍰</Text>
+                          <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                            {dessert.name}
+                          </Text>
+                          {isSelected && (
+                            <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
-            </View>
+            )}
           </View>
         )}
 
@@ -977,52 +1413,108 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
             </View>
 
             {/* SECTION: PLATS PRINCIPAUX DE CHABBAT */}
-            <View style={styles.sectionHeaderRow}>
+            {(typeFilter === 'all' || typeFilter === 'plats') && (
               <View>
-                <Text style={styles.sectionTitle}>Plats principaux de Chabbat</Text>
-                <Text style={styles.sectionSubtitle}>
-                  Couscous, Pkaïla, Boulettes, Poisson... (classés du moins récent au plus récent)
-                </Text>
-              </View>
-            </View>
+                <View style={styles.sectionHeaderRow}>
+                  <View>
+                    <Text style={styles.sectionTitle}>Plats principaux de Chabbat</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Couscous, Pkaïla, Boulettes, Poisson... (classés du moins récent au plus récent)
+                    </Text>
+                  </View>
+                  <Text style={styles.sectionCounter}>{sortedChabbatMains.length} choix</Text>
+                </View>
 
-            <View style={styles.chabbatCardsList}>
-              {sortedChabbatMains.map(dish => renderChabbatDishItem(dish))}
-            </View>
+                {sortedChabbatMains.length === 0 ? (
+                  <View style={styles.emptyFilterState}>
+                    <Text style={styles.emptyFilterText}>Aucun plat de Chabbat dans vos plats.</Text>
+                    <TouchableOpacity style={styles.emptyFilterBtn} onPress={onNavigateToSuggestions}>
+                      <Text style={styles.emptyFilterBtnText}>💡 Voir les suggestions</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.chabbatCardsList}>
+                    {sortedChabbatMains.map(dish => renderChabbatDishItem(dish))}
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* SECTION: ENTRÉES & SALADES CUITES */}
-            <View style={styles.sectionHeaderRow}>
-              <View>
-                <Text style={styles.sectionTitle}>Entrées, Salades cuites & Kémia</Text>
-                <Text style={styles.sectionSubtitle}>Slata Méchouia, carottes, navets roses, matbucha...</Text>
-              </View>
-            </View>
-
-            <View style={styles.chabbatCardsList}>
-              {sortedChabbatEntrees.map(dish => renderChabbatDishItem(dish))}
-            </View>
-
-            {/* SECTION: ACCOMPAGNEMENTS DE CHABBAT */}
-            {sortedChabbatSides.length > 0 && (
+            {(typeFilter === 'all' || typeFilter === 'entrees') && (
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionTitle}>Accompagnements</Text>
+                  <View>
+                    <Text style={styles.sectionTitle}>Entrées, Salades cuites & Kémia</Text>
+                    <Text style={styles.sectionSubtitle}>Slata Méchouia, carottes, navets roses, matbucha...</Text>
+                  </View>
+                  <Text style={styles.sectionCounter}>{sortedChabbatEntrees.length} choix</Text>
                 </View>
-                <View style={styles.chabbatCardsList}>
-                  {sortedChabbatSides.map(dish => renderChabbatDishItem(dish))}
+
+                {sortedChabbatEntrees.length === 0 ? (
+                  <View style={styles.emptyFilterState}>
+                    <Text style={styles.emptyFilterText}>Aucune entrée ou salade cuite dans vos plats.</Text>
+                    <TouchableOpacity style={styles.emptyFilterBtn} onPress={onNavigateToSuggestions}>
+                      <Text style={styles.emptyFilterBtnText}>💡 Voir les suggestions</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.chabbatCardsList}>
+                    {sortedChabbatEntrees.map(dish => renderChabbatDishItem(dish))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* SECTION: ACCOMPAGNEMENTS DE CHABBAT */}
+            {(typeFilter === 'all' || typeFilter === 'accompagnement') && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeaderRow}>
+                  <View>
+                    <Text style={styles.sectionTitle}>Accompagnements</Text>
+                    <Text style={styles.sectionSubtitle}>Garnitures et féculents</Text>
+                  </View>
+                  <Text style={styles.sectionCounter}>{sortedChabbatSides.length} choix</Text>
                 </View>
+
+                {sortedChabbatSides.length === 0 ? (
+                  <View style={styles.emptyFilterState}>
+                    <Text style={styles.emptyFilterText}>Aucun accompagnement spécifique pour Chabbat.</Text>
+                    <TouchableOpacity style={styles.emptyFilterBtn} onPress={onNavigateToSuggestions}>
+                      <Text style={styles.emptyFilterBtnText}>💡 Voir les suggestions</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.chabbatCardsList}>
+                    {sortedChabbatSides.map(dish => renderChabbatDishItem(dish))}
+                  </View>
+                )}
               </View>
             )}
 
             {/* SECTION: DESSERTS DE CHABBAT */}
-            {sortedChabbatDesserts.length > 0 && (
+            {(typeFilter === 'all' || typeFilter === 'dessert') && (
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionTitle}>Desserts de fête</Text>
+                  <View>
+                    <Text style={styles.sectionTitle}>Desserts de fête</Text>
+                    <Text style={styles.sectionSubtitle}>Pour terminer en beauté</Text>
+                  </View>
+                  <Text style={styles.sectionCounter}>{sortedChabbatDesserts.length} choix</Text>
                 </View>
-                <View style={styles.chabbatCardsList}>
-                  {sortedChabbatDesserts.map(dish => renderChabbatDishItem(dish))}
-                </View>
+
+                {sortedChabbatDesserts.length === 0 ? (
+                  <View style={styles.emptyFilterState}>
+                    <Text style={styles.emptyFilterText}>Aucun dessert spécifique pour Chabbat.</Text>
+                    <TouchableOpacity style={styles.emptyFilterBtn} onPress={onNavigateToSuggestions}>
+                      <Text style={styles.emptyFilterBtnText}>💡 Voir les suggestions</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.chabbatCardsList}>
+                    {sortedChabbatDesserts.map(dish => renderChabbatDishItem(dish))}
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -1538,10 +2030,95 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: '#FDFCF7',
   },
-  chabbatCardTop: {
+  // Type Filter Bar styles
+  typeFilterContainer: {
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    paddingVertical: 8,
+  },
+  typeFilterScroll: {
+    paddingHorizontal: 16,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    gap: 8,
+    alignItems: 'center',
+  },
+  typeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: colors.cardAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  typeFilterChipActiveSemaine: {
+    backgroundColor: colors.semaine,
+    borderColor: colors.semaine,
+  },
+  typeFilterChipActiveShabbat: {
+    backgroundColor: colors.shabbat,
+    borderColor: colors.shabbat,
+  },
+  typeFilterChipText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  typeFilterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  typeFilterChipBadge: {
+    marginLeft: 6,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  typeFilterChipBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  typeFilterChipBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  typeFilterChipBadgeTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  emptyFilterState: {
+    backgroundColor: colors.cardAlt,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  emptyFilterText: {
+    fontSize: 13,
+    color: colors.textSecondary,
     marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyFilterBtn: {
+    backgroundColor: colors.card,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyFilterBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  chabbatCardTop: {
+    marginBottom: 6,
   },
   chabbatCardNameRow: {
     flexDirection: 'row',
@@ -1564,50 +2141,73 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 4,
   },
+  chabbatFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 6,
+    gap: 8,
+  },
   chabbatDateBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 7,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+    flexShrink: 1,
+  },
+  chabbatDateBadgeNever: {
+    backgroundColor: '#ECFDF5',
   },
   chabbatDateBadgeText: {
     fontSize: 11,
     color: colors.textSecondary,
   },
-  chabbatButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 6,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+  chabbatDateBadgeTextNever: {
+    color: '#059669',
+    fontWeight: '700',
   },
-  chabbatSlotToggleBtn: {
-    flex: 1,
+  chabbatInlineButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
-    borderRadius: 10,
+    flexShrink: 0,
+  },
+  chabbatInlineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4.5,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.cardAlt,
   },
-  chabbatSlotToggleBtnVendrediActive: {
+  chabbatInlineBtnVendredi: {
+    borderColor: '#E9D5FF',
+  },
+  chabbatInlineBtnVendrediActive: {
     backgroundColor: colors.shabbat,
     borderColor: colors.shabbat,
   },
-  chabbatSlotToggleBtnSamediActive: {
+  chabbatInlineBtnSamedi: {
+    borderColor: '#FDE68A',
+  },
+  chabbatInlineBtnSamediActive: {
     backgroundColor: '#D97706',
     borderColor: '#D97706',
   },
-  chabbatSlotToggleBtnText: {
-    fontSize: 12,
+  chabbatInlineBtnText: {
+    fontSize: 11.5,
     fontWeight: '700',
     color: colors.textSecondary,
   },
-  chabbatSlotToggleBtnTextActive: {
+  chabbatInlineBtnTextActive: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
 });
