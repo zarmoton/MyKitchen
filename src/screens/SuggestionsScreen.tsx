@@ -208,6 +208,34 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.filterChip, selectedCuisine === 'israelien' && styles.filterChipActiveIsraelien]}
+            onPress={() => setSelectedCuisine(selectedCuisine === 'israelien' ? 'all' : 'israelien')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedCuisine === 'israelien' && styles.filterChipTextActive,
+              ]}
+            >
+              Israélien
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedCuisine === 'francais' && styles.filterChipActiveFrancais]}
+            onPress={() => setSelectedCuisine(selectedCuisine === 'francais' ? 'all' : 'francais')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedCuisine === 'francais' && styles.filterChipTextActive,
+              ]}
+            >
+              Français
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.filterChip, selectedCuisine === 'classique' && styles.filterChipActive]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'classique' ? 'all' : 'classique')}
           >
@@ -444,6 +472,14 @@ const styles = StyleSheet.create({
   filterChipActiveItalien: {
     backgroundColor: colors.badgeItalien,
     borderColor: colors.badgeItalien,
+  },
+  filterChipActiveIsraelien: {
+    backgroundColor: colors.badgeIsraelien,
+    borderColor: colors.badgeIsraelien,
+  },
+  filterChipActiveFrancais: {
+    backgroundColor: colors.badgeFrancais,
+    borderColor: colors.badgeFrancais,
   },
   filterChipActiveSemaine: {
     backgroundColor: colors.semaine,

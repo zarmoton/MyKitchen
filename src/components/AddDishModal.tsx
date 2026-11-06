@@ -202,12 +202,14 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
               ))}
             </View>
 
-            {/* Cuisine / Origine - SANS DRAPEAU */}
+            {/* Cuisine / Origine */}
             <Text style={styles.label}>Style de cuisine</Text>
             <View style={styles.chipsRow}>
               {[
                 { key: 'tunisien', label: 'Tunisien' },
                 { key: 'italien', label: 'Italien' },
+                { key: 'israelien', label: 'Israélien' },
+                { key: 'francais', label: 'Français' },
                 { key: 'classique', label: 'Classique / Familial' },
               ].map(item => (
                 <TouchableOpacity

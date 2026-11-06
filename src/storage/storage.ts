@@ -6,7 +6,7 @@ import { SUGGESTIONS_DATABASE } from '../data/suggestionsDatabase';
 const STORAGE_KEYS = {
   DISHES: '@mykitchen_user_dishes_v2',
   MEAL_HISTORY: '@mykitchen_meal_history_v1',
-  SUGGESTIONS: '@mykitchen_suggestions_v1',
+  SUGGESTIONS: '@mykitchen_suggestions_v2',
 };
 
 // ==========================================

@@ -34,6 +34,10 @@ export const colors = {
   badgeTunisienBg: '#FBE9E7',
   badgeItalien: '#00897B',
   badgeItalienBg: '#E0F2F1',
+  badgeIsraelien: '#0284C7',
+  badgeIsraelienBg: '#E0F2FE',
+  badgeFrancais: '#4338CA',
+  badgeFrancaisBg: '#EEF2FF',
   badgeClassique: '#5C6BC0',
   badgeClassiqueBg: '#EDE7F6',
 

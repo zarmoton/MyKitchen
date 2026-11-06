@@ -200,7 +200,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
 
           <View style={styles.filterDivider} />
 
-          {/* Cuisine - SANS DRAPEAU */}
+          {/* Cuisine */}
           <TouchableOpacity
             style={[styles.filterChip, selectedCuisine === 'tunisien' && styles.filterChipActiveTunisien]}
             onPress={() => setSelectedCuisine(selectedCuisine === 'tunisien' ? 'all' : 'tunisien')}
@@ -226,6 +226,34 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
               ]}
             >
               Italien
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedCuisine === 'israelien' && styles.filterChipActiveIsraelien]}
+            onPress={() => setSelectedCuisine(selectedCuisine === 'israelien' ? 'all' : 'israelien')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedCuisine === 'israelien' && styles.filterChipTextActive,
+              ]}
+            >
+              Israélien
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedCuisine === 'francais' && styles.filterChipActiveFrancais]}
+            onPress={() => setSelectedCuisine(selectedCuisine === 'francais' ? 'all' : 'francais')}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                selectedCuisine === 'francais' && styles.filterChipTextActive,
+              ]}
+            >
+              Français
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -376,6 +404,14 @@ const styles = StyleSheet.create({
   filterChipActiveItalien: {
     backgroundColor: colors.badgeItalien,
     borderColor: colors.badgeItalien,
+  },
+  filterChipActiveIsraelien: {
+    backgroundColor: colors.badgeIsraelien,
+    borderColor: colors.badgeIsraelien,
+  },
+  filterChipActiveFrancais: {
+    backgroundColor: colors.badgeFrancais,
+    borderColor: colors.badgeFrancais,
   },
   filterChipText: {
     fontSize: 12.5,

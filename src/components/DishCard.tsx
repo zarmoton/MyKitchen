@@ -46,6 +46,10 @@ export const DishCard: React.FC<DishCardProps> = ({
         return { label: 'Tunisien', bg: colors.badgeTunisienBg, color: colors.badgeTunisien };
       case 'italien':
         return { label: 'Italien', bg: colors.badgeItalienBg, color: colors.badgeItalien };
+      case 'israelien':
+        return { label: 'Israélien', bg: colors.badgeIsraelienBg, color: colors.badgeIsraelien };
+      case 'francais':
+        return { label: 'Français', bg: colors.badgeFrancaisBg, color: colors.badgeFrancais };
       case 'classique':
         return { label: 'Classique', bg: colors.badgeClassiqueBg, color: colors.badgeClassique };
     }
