@@ -79,6 +79,20 @@ const DishCardComponent: React.FC<DishCardProps> = ({
     }
   }, [dish.occasion]);
 
+  const kashrutBadge = useMemo(() => {
+    if (!dish.kashrut) return null;
+    switch (dish.kashrut) {
+      case 'bassari':
+        return { label: '🥩 Bassari', bg: '#FEE2E2', color: '#B91C1C' };
+      case 'halavi':
+        return { label: '🧀 Halavi', bg: '#E0F2FE', color: '#0369A1' };
+      case 'poisson':
+        return { label: '🐟 Poisson', bg: '#CCFBF1', color: '#0F766E' };
+      case 'parve':
+        return { label: '🌿 Parve', bg: '#DCFCE7', color: '#15803D' };
+    }
+  }, [dish.kashrut]);
+
   const lastCookedInfo = useMemo(() => {
     return formatLastCooked(dish.lastCookedDate);
   }, [dish.lastCookedDate]);
@@ -196,6 +210,14 @@ const DishCardComponent: React.FC<DishCardProps> = ({
                 {occasionBadge.label}
               </Text>
             </View>
+
+            {kashrutBadge && (
+              <View style={[styles.badge, compact && styles.compactBadge, { backgroundColor: kashrutBadge.bg }]}>
+                <Text style={[styles.badgeText, compact && styles.compactBadgeText, { color: kashrutBadge.color, fontWeight: '700' }]}>
+                  {kashrutBadge.label}
+                </Text>
+              </View>
+            )}
 
             {/* Date de dernière sélection */}
             {showLastCooked && (

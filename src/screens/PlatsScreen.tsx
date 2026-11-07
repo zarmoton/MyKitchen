@@ -36,6 +36,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
   const [selectedOccasion, setSelectedOccasion] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedCuisine, setSelectedCuisine] = useState<string>('all');
+  const [selectedKashrut, setSelectedKashrut] = useState<string>('all');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
@@ -96,6 +97,11 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         return false;
       }
 
+      // Kashrut (Halavi / Bassari / Poisson / Parve)
+      if (selectedKashrut !== 'all' && dish.kashrut !== selectedKashrut) {
+        return false;
+      }
+
       return true;
     });
 
@@ -106,7 +112,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
       if (!b.lastCookedDate) return 1;
       return new Date(a.lastCookedDate).getTime() - new Date(b.lastCookedDate).getTime();
     });
-  }, [userDishes, search, selectedOccasion, selectedType, selectedCuisine, onlyFavorites]);
+  }, [userDishes, search, selectedOccasion, selectedType, selectedCuisine, selectedKashrut, onlyFavorites]);
 
   const confirmDelete = useCallback(
     (dish: Dish) => {
@@ -175,18 +181,32 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
           {/* Tous */}
           <TouchableOpacity
-            style={[styles.filterChip, !onlyFavorites && selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              !onlyFavorites &&
+                selectedOccasion === 'all' &&
+                selectedType === 'all' &&
+                selectedCuisine === 'all' &&
+                selectedKashrut === 'all' &&
+                styles.filterChipActive,
+            ]}
             onPress={() => {
               setOnlyFavorites(false);
               setSelectedOccasion('all');
               setSelectedType('all');
               setSelectedCuisine('all');
+              setSelectedKashrut('all');
             }}
           >
             <Text
               style={[
                 styles.filterChipText,
-                !onlyFavorites && selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipTextActive,
+                !onlyFavorites &&
+                  selectedOccasion === 'all' &&
+                  selectedType === 'all' &&
+                  selectedCuisine === 'all' &&
+                  selectedKashrut === 'all' &&
+                  styles.filterChipTextActive,
               ]}
             >
               Tous ({userDishes.length})
@@ -206,6 +226,45 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
             />
             <Text style={[styles.filterChipText, onlyFavorites && styles.filterChipTextActive]}>
               Favoris ({favoritesCount})
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.filterDivider} />
+
+          {/* Catégories Casher (Halavi / Bassari / Poisson / Parve) */}
+          <TouchableOpacity
+            style={[styles.filterChip, selectedKashrut === 'bassari' && styles.filterChipActiveBassari]}
+            onPress={() => setSelectedKashrut(selectedKashrut === 'bassari' ? 'all' : 'bassari')}
+          >
+            <Text style={[styles.filterChipText, selectedKashrut === 'bassari' && styles.filterChipTextActive]}>
+              🥩 Bassari
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedKashrut === 'halavi' && styles.filterChipActiveHalavi]}
+            onPress={() => setSelectedKashrut(selectedKashrut === 'halavi' ? 'all' : 'halavi')}
+          >
+            <Text style={[styles.filterChipText, selectedKashrut === 'halavi' && styles.filterChipTextActive]}>
+              🧀 Halavi
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedKashrut === 'poisson' && styles.filterChipActivePoisson]}
+            onPress={() => setSelectedKashrut(selectedKashrut === 'poisson' ? 'all' : 'poisson')}
+          >
+            <Text style={[styles.filterChipText, selectedKashrut === 'poisson' && styles.filterChipTextActive]}>
+              🐟 Poisson
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedKashrut === 'parve' && styles.filterChipActiveParve]}
+            onPress={() => setSelectedKashrut(selectedKashrut === 'parve' ? 'all' : 'parve')}
+          >
+            <Text style={[styles.filterChipText, selectedKashrut === 'parve' && styles.filterChipTextActive]}>
+              🌿 Parve
             </Text>
           </TouchableOpacity>
 
@@ -520,6 +579,22 @@ const styles = StyleSheet.create({
   filterChipActiveHeart: {
     backgroundColor: '#EF4444',
     borderColor: '#EF4444',
+  },
+  filterChipActiveBassari: {
+    backgroundColor: '#B91C1C',
+    borderColor: '#B91C1C',
+  },
+  filterChipActiveHalavi: {
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
+  },
+  filterChipActivePoisson: {
+    backgroundColor: '#0F766E',
+    borderColor: '#0F766E',
+  },
+  filterChipActiveParve: {
+    backgroundColor: '#15803D',
+    borderColor: '#15803D',
   },
   filterChipActiveTunisien: {
     backgroundColor: colors.badgeTunisien,

@@ -9,12 +9,15 @@ export type OccasionType =
 
 export type CuisineType = 'tunisien' | 'italien' | 'israelien' | 'francais' | 'classique' | 'bbq';
 
+export type KashrutType = 'bassari' | 'halavi' | 'poisson' | 'parve';
+
 export interface Dish {
   id: string;
   name: string;
   type: DishType;
   occasion: OccasionType;
   cuisine: CuisineType;
+  kashrut?: KashrutType;
   description?: string;
   isCustom?: boolean;
   createdAt?: number;

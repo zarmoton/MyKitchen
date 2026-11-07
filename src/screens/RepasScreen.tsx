@@ -437,19 +437,32 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
             )}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={styles.cuisineIcon}>
-              {dish.cuisine === 'tunisien'
-                ? '🥘'
-                : dish.cuisine === 'israelien'
-                ? '🧆'
-                : dish.cuisine === 'italien'
-                ? '🍝'
-                : dish.cuisine === 'francais'
-                ? '🥖'
-                : dish.cuisine === 'bbq'
-                ? '🔥'
-                : '🍽️'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <Text style={styles.cuisineIcon}>
+                {dish.cuisine === 'tunisien'
+                  ? '🥘'
+                  : dish.cuisine === 'israelien'
+                  ? '🧆'
+                  : dish.cuisine === 'italien'
+                  ? '🍝'
+                  : dish.cuisine === 'francais'
+                  ? '🥖'
+                  : dish.cuisine === 'bbq'
+                  ? '🔥'
+                  : '🍽️'}
+              </Text>
+              {dish.kashrut && (
+                <Text style={{ fontSize: 12 }}>
+                  {dish.kashrut === 'bassari'
+                    ? '🥩'
+                    : dish.kashrut === 'halavi'
+                    ? '🧀'
+                    : dish.kashrut === 'poisson'
+                    ? '🐟'
+                    : '🌿'}
+                </Text>
+              )}
+            </View>
             {onToggleFavorite && (
               <TouchableOpacity
                 onPress={() => onToggleFavorite(dish.id)}
@@ -1095,6 +1108,24 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                   </View>
                 )}
 
+                {/* Kashrut conflict notice */}
+                {(() => {
+                  const items = [semainePlat, semaineSide, semaineDessert].filter(Boolean) as Dish[];
+                  const hasBassari = items.some(d => d.kashrut === 'bassari');
+                  const hasHalavi = items.some(d => d.kashrut === 'halavi');
+                  if (hasBassari && hasHalavi) {
+                    return (
+                      <View style={[styles.previewRow, styles.previewKashrutWarningRow]}>
+                        <Ionicons name="warning" size={18} color="#B91C1C" />
+                        <Text style={styles.previewKashrutWarningText}>
+                          ⚠️ Attention : mélange Bassari (viande) et Halavi (lait) !
+                        </Text>
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
+
                 <TouchableOpacity style={styles.validateMealBtn} onPress={handleValidateSemaineMeal}>
                   <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
                   <Text style={styles.validateMealBtnText}>Valider et enregistrer ce repas</Text>
@@ -1176,9 +1207,22 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                           <Text style={[styles.choiceName, isSelected && styles.choiceNameSelected]} numberOfLines={2}>
                             {dish.name}
                           </Text>
-                          <Text style={styles.choiceType}>
-                            {dish.type === 'complet' ? 'Plat complet' : 'À accompagner'}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={styles.choiceType}>
+                              {dish.type === 'complet' ? 'Plat complet' : 'À accompagner'}
+                            </Text>
+                            {dish.kashrut && (
+                              <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.textSecondary }}>
+                                {dish.kashrut === 'bassari'
+                                  ? '🥩 Bassari'
+                                  : dish.kashrut === 'halavi'
+                                  ? '🧀 Halavi'
+                                  : dish.kashrut === 'poisson'
+                                  ? '🐟 Poisson'
+                                  : '🌿 Parve'}
+                              </Text>
+                            )}
+                          </View>
 
                           {/* Date badge */}
                           <View style={[styles.dateBadgePill, lastCooked.isNever && styles.dateBadgePillNever]}>
@@ -1249,6 +1293,17 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                               <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                                 {side.name}
                               </Text>
+                              {side.kashrut && (
+                                <Text style={{ fontSize: 10, marginLeft: 3 }}>
+                                  {side.kashrut === 'bassari'
+                                    ? '🥩'
+                                    : side.kashrut === 'halavi'
+                                    ? '🧀'
+                                    : side.kashrut === 'poisson'
+                                    ? '🐟'
+                                    : '🌿'}
+                                </Text>
+                              )}
                               {side.isFavorite && (
                                 <Ionicons name="heart" size={12} color="#EF4444" style={{ marginLeft: 3 }} />
                               )}
@@ -1320,6 +1375,17 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                             <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                               {dessert.name}
                             </Text>
+                            {dessert.kashrut && (
+                              <Text style={{ fontSize: 10, marginLeft: 3 }}>
+                                {dessert.kashrut === 'bassari'
+                                  ? '🥩'
+                                  : dessert.kashrut === 'halavi'
+                                  ? '🧀'
+                                  : dessert.kashrut === 'poisson'
+                                  ? '🐟'
+                                  : '🌿'}
+                              </Text>
+                            )}
                             {dessert.isFavorite && (
                               <Ionicons name="heart" size={12} color="#EF4444" style={{ marginLeft: 3 }} />
                             )}
@@ -1855,6 +1921,17 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '700',
     color: '#B45309',
+  },
+  previewKashrutWarningRow: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  previewKashrutWarningText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#B91C1C',
+    flex: 1,
   },
   previewItemIcon: {
     fontSize: 20,

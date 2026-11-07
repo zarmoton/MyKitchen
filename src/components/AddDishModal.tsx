@@ -11,7 +11,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { Dish, DishType, OccasionType, CuisineType } from '../types';
+import { Dish, DishType, OccasionType, CuisineType, KashrutType } from '../types';
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -23,6 +23,13 @@ interface AddDishModalProps {
   title?: string;
   subtitle?: string;
 }
+
+const kashrutOptions: { key: KashrutType; label: string; icon: string }[] = [
+  { key: 'bassari', label: 'Bassari (Viande)', icon: '🥩' },
+  { key: 'halavi', label: 'Halavi (Lait)', icon: '🧀' },
+  { key: 'poisson', label: 'Poisson', icon: '🐟' },
+  { key: 'parve', label: 'Parve (Neutre)', icon: '🌿' },
+];
 
 export const AddDishModal: React.FC<AddDishModalProps> = ({
   visible,
@@ -36,6 +43,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
   const [type, setType] = useState<DishType>('complet');
   const [occasion, setOccasion] = useState<OccasionType>('semaine');
   const [cuisine, setCuisine] = useState<CuisineType>('classique');
+  const [kashrut, setKashrut] = useState<KashrutType | undefined>(undefined);
   const [description, setDescription] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -46,6 +54,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
       setType(initialDish.type || 'complet');
       setOccasion(initialDish.occasion || 'semaine');
       setCuisine(initialDish.cuisine || 'classique');
+      setKashrut(initialDish.kashrut);
       setDescription(initialDish.description || '');
       setIsFavorite(!!initialDish.isFavorite);
     } else {
@@ -58,6 +67,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
     setType('complet');
     setOccasion('semaine');
     setCuisine('classique');
+    setKashrut(undefined);
     setDescription('');
     setIsFavorite(false);
   };
@@ -75,6 +85,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
       type,
       occasion,
       cuisine,
+      kashrut,
       description: description.trim() || undefined,
       isCustom: initialDish ? initialDish.isCustom : true,
       sourceSuggestionId: initialDish?.sourceSuggestionId,
@@ -232,6 +243,38 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
                     ]}
                   >
                     {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Catégorie casher */}
+            <Text style={styles.label}>Catégorie (Halavi / Bassari / Poisson / Parve)</Text>
+            <View style={styles.chipsRow}>
+              {kashrutOptions.map(item => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[
+                    styles.chip,
+                    kashrut === item.key && (
+                      item.key === 'bassari'
+                        ? styles.chipSelectedBassari
+                        : item.key === 'halavi'
+                        ? styles.chipSelectedHalavi
+                        : item.key === 'poisson'
+                        ? styles.chipSelectedPoisson
+                        : styles.chipSelectedParve
+                    ),
+                  ]}
+                  onPress={() => setKashrut(kashrut === item.key ? undefined : item.key)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      kashrut === item.key && styles.chipTextSelected,
+                    ]}
+                  >
+                    {item.icon} {item.label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -417,6 +460,22 @@ const styles = StyleSheet.create({
   chipSelected: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+  },
+  chipSelectedBassari: {
+    backgroundColor: '#B91C1C',
+    borderColor: '#B91C1C',
+  },
+  chipSelectedHalavi: {
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
+  },
+  chipSelectedPoisson: {
+    backgroundColor: '#0F766E',
+    borderColor: '#0F766E',
+  },
+  chipSelectedParve: {
+    backgroundColor: '#15803D',
+    borderColor: '#15803D',
   },
   chipText: {
     fontSize: 13.5,
