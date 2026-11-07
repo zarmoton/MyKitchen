@@ -18,6 +18,7 @@ interface RepasScreenProps {
   onNavigateToHistory: () => void;
   onNavigateToSuggestions: () => void;
   prefilledMeal?: MealHistoryEntry | null;
+  onToggleFavorite?: (dishId: string) => void;
 }
 
 export const RepasScreen: React.FC<RepasScreenProps> = ({
@@ -26,11 +27,15 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   onNavigateToHistory,
   onNavigateToSuggestions,
   prefilledMeal,
+  onToggleFavorite,
 }) => {
   const dayInfo = getDayInfo();
 
   // Mode initialized based on day of week: Mercredi, Jeudi, Vendredi -> Chabbat. Sinon Semaine.
   const [mealMode, setMealMode] = useState<MealHistoryOccasion>(dayInfo.defaultMode);
+
+  // Scope: Tout vs Que les favoris
+  const [onlyFavorites, setOnlyFavorites] = useState<boolean>(false);
 
   // Dish type filter for page 1 ('all', 'plats', 'complet', 'principal', 'entrees', 'accompagnement', 'dessert')
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -87,10 +92,24 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
     });
   };
 
+  // Scope calculations (All vs Favorites count)
+  const currentAvailableDishes = useMemo(() => {
+    if (mealMode === 'semaine') {
+      return userDishes.filter(d => d.occasion === 'semaine' || d.occasion === 'tous');
+    }
+    return userDishes.filter(d => d.occasion.startsWith('chabbat') || d.occasion === 'tous');
+  }, [userDishes, mealMode]);
+
+  const currentFavsCount = useMemo(() => {
+    return currentAvailableDishes.filter(d => d.isFavorite).length;
+  }, [currentAvailableDishes]);
+
   // Filtered lists for Semaine
   const semaineDishes = useMemo(() => {
-    return userDishes.filter(d => d.occasion === 'semaine' || d.occasion === 'tous');
-  }, [userDishes]);
+    return userDishes.filter(
+      d => (d.occasion === 'semaine' || d.occasion === 'tous') && (!onlyFavorites || d.isFavorite)
+    );
+  }, [userDishes, onlyFavorites]);
 
   const sortedSemaineMains = useMemo(() => {
     const list = semaineDishes.filter(d => d.type === 'complet' || d.type === 'principal');
@@ -112,19 +131,25 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
   }, [typeFilter, sortedSemaineMains, sortedSemaineComplets, sortedSemainePrincipals]);
 
   const sortedSides = useMemo(() => {
-    const list = userDishes.filter(d => d.type === 'accompagnement');
+    const list = userDishes.filter(
+      d => d.type === 'accompagnement' && (!onlyFavorites || d.isFavorite)
+    );
     return sortByCookingDate(list);
-  }, [userDishes]);
+  }, [userDishes, onlyFavorites]);
 
   const sortedDesserts = useMemo(() => {
-    const list = userDishes.filter(d => d.type === 'dessert');
+    const list = userDishes.filter(
+      d => d.type === 'dessert' && (!onlyFavorites || d.isFavorite)
+    );
     return sortByCookingDate(list);
-  }, [userDishes]);
+  }, [userDishes, onlyFavorites]);
 
   // Filtered lists for Chabbat
   const chabbatDishes = useMemo(() => {
-    return userDishes.filter(d => d.occasion.startsWith('chabbat') || d.occasion === 'tous');
-  }, [userDishes]);
+    return userDishes.filter(
+      d => (d.occasion.startsWith('chabbat') || d.occasion === 'tous') && (!onlyFavorites || d.isFavorite)
+    );
+  }, [userDishes, onlyFavorites]);
 
   const sortedChabbatMains = useMemo(() => {
     const list = chabbatDishes.filter(d => d.type === 'complet' || d.type === 'principal');
@@ -405,20 +430,39 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
         ]}
       >
         <View style={styles.chabbatCardNameRow}>
-          <Text style={styles.chabbatCardName}>{dish.name}</Text>
-          <Text style={styles.cuisineIcon}>
-            {dish.cuisine === 'tunisien'
-              ? '🥘'
-              : dish.cuisine === 'israelien'
-              ? '🧆'
-              : dish.cuisine === 'italien'
-              ? '🍝'
-              : dish.cuisine === 'francais'
-              ? '🥖'
-              : dish.cuisine === 'bbq'
-              ? '🔥'
-              : '🍽️'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+            <Text style={styles.chabbatCardName}>{dish.name}</Text>
+            {dish.isFavorite && (
+              <Ionicons name="heart" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
+            )}
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={styles.cuisineIcon}>
+              {dish.cuisine === 'tunisien'
+                ? '🥘'
+                : dish.cuisine === 'israelien'
+                ? '🧆'
+                : dish.cuisine === 'italien'
+                ? '🍝'
+                : dish.cuisine === 'francais'
+                ? '🥖'
+                : dish.cuisine === 'bbq'
+                ? '🔥'
+                : '🍽️'}
+            </Text>
+            {onToggleFavorite && (
+              <TouchableOpacity
+                onPress={() => onToggleFavorite(dish.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={dish.isFavorite ? 'heart' : 'heart-outline'}
+                  size={19}
+                  color={dish.isFavorite ? '#EF4444' : colors.textMuted}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {dish.description ? (
@@ -544,6 +588,41 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
               ]}
             >
               Chabbat
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Scope Switcher: Tout vs Que les favoris */}
+        <View style={styles.scopeSwitcherContainer}>
+          <TouchableOpacity
+            style={[
+              styles.scopeBtn,
+              !onlyFavorites && (mealMode === 'semaine' ? styles.scopeBtnActiveSemaine : styles.scopeBtnActiveShabbat),
+            ]}
+            onPress={() => setOnlyFavorites(false)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.scopeBtnText, !onlyFavorites && styles.scopeBtnTextActive]}>
+              🍽️ Tout ({currentAvailableDishes.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.scopeBtn,
+              onlyFavorites && styles.scopeBtnActiveHeart,
+            ]}
+            onPress={() => setOnlyFavorites(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="heart"
+              size={13}
+              color={onlyFavorites ? '#FFFFFF' : '#EF4444'}
+              style={{ marginRight: 5 }}
+            />
+            <Text style={[styles.scopeBtnText, onlyFavorites && styles.scopeBtnTextActive]}>
+              Que les favoris ({currentFavsCount})
             </Text>
           </TouchableOpacity>
         </View>
@@ -1073,9 +1152,26 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                             <Text style={styles.choiceIcon}>
                               {dish.type === 'complet' ? '🍲' : '🥩'}
                             </Text>
-                            {isSelected && (
-                              <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                            )}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              {onToggleFavorite && (
+                                <TouchableOpacity
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    onToggleFavorite(dish.id);
+                                  }}
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                  <Ionicons
+                                    name={dish.isFavorite ? 'heart' : 'heart-outline'}
+                                    size={18}
+                                    color={dish.isFavorite ? '#EF4444' : colors.textMuted}
+                                  />
+                                </TouchableOpacity>
+                              )}
+                              {isSelected && (
+                                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                              )}
+                            </View>
                           </View>
                           <Text style={[styles.choiceName, isSelected && styles.choiceNameSelected]} numberOfLines={2}>
                             {dish.name}
@@ -1148,16 +1244,37 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                           onPress={() => setSemaineSide(isSelected ? null : side)}
                         >
                           <Text style={styles.chipIcon}>🍟</Text>
-                          <View>
-                            <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                              {side.name}
-                            </Text>
+                          <View style={{ flexShrink: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                                {side.name}
+                              </Text>
+                              {side.isFavorite && (
+                                <Ionicons name="heart" size={12} color="#EF4444" style={{ marginLeft: 3 }} />
+                              )}
+                            </View>
                             <Text style={[styles.chipSubDate, isSelected && { color: '#FFFFFF' }]}>
                               {lastCooked.text}
                             </Text>
                           </View>
+                          {onToggleFavorite && (
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                onToggleFavorite(side.id);
+                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ marginLeft: 6 }}
+                            >
+                              <Ionicons
+                                name={side.isFavorite ? 'heart' : 'heart-outline'}
+                                size={15}
+                                color={side.isFavorite ? '#EF4444' : (isSelected ? 'rgba(255,255,255,0.7)' : colors.textMuted)}
+                              />
+                            </TouchableOpacity>
+                          )}
                           {isSelected && (
-                            <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                            <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
                           )}
                         </TouchableOpacity>
                       );
@@ -1199,9 +1316,30 @@ export const RepasScreen: React.FC<RepasScreenProps> = ({
                           onPress={() => setSemaineDessert(isSelected ? null : dessert)}
                         >
                           <Text style={styles.chipIcon}>🍰</Text>
-                          <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                            {dessert.name}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                              {dessert.name}
+                            </Text>
+                            {dessert.isFavorite && (
+                              <Ionicons name="heart" size={12} color="#EF4444" style={{ marginLeft: 3 }} />
+                            )}
+                          </View>
+                          {onToggleFavorite && (
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                onToggleFavorite(dessert.id);
+                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ marginLeft: 6 }}
+                            >
+                              <Ionicons
+                                name={dessert.isFavorite ? 'heart' : 'heart-outline'}
+                                size={15}
+                                color={dessert.isFavorite ? '#EF4444' : (isSelected ? 'rgba(255,255,255,0.7)' : colors.textMuted)}
+                              />
+                            </TouchableOpacity>
+                          )}
                           {isSelected && (
                             <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
                           )}
@@ -1582,6 +1720,41 @@ const styles = StyleSheet.create({
   },
   segmentTextActive: {
     color: '#FFFFFF',
+  },
+  scopeSwitcherContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.cardAlt,
+    borderRadius: 12,
+    padding: 3,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  scopeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  scopeBtnActiveSemaine: {
+    backgroundColor: colors.semaine,
+  },
+  scopeBtnActiveShabbat: {
+    backgroundColor: colors.shabbat,
+  },
+  scopeBtnActiveHeart: {
+    backgroundColor: '#EF4444',
+  },
+  scopeBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  scopeBtnTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   hintRow: {
     flexDirection: 'row',

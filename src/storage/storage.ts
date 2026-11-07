@@ -70,6 +70,18 @@ export const removeDish = async (dishId: string): Promise<Dish[]> => {
   }
 };
 
+export const toggleFavoriteDish = async (dishId: string): Promise<Dish[]> => {
+  try {
+    const current = await getDishes();
+    const updated = current.map(d => (d.id === dishId ? { ...d, isFavorite: !d.isFavorite } : d));
+    await saveDishes(updated);
+    return updated;
+  } catch (error) {
+    console.error('Error toggling favorite dish:', error);
+    return [];
+  }
+};
+
 export const toggleImportSuggestion = async (suggestion: Dish): Promise<{ dishes: Dish[]; isImported: boolean }> => {
   try {
     const current = await getDishes();

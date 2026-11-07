@@ -22,6 +22,7 @@ import {
   updateDish,
   removeDish,
   saveDishes,
+  toggleFavoriteDish,
   getSuggestions,
   addSuggestion,
   updateSuggestion,
@@ -81,6 +82,11 @@ function MainApp() {
 
   const handleDeleteDish = useCallback(async (dishId: string) => {
     const updated = await removeDish(dishId);
+    setUserDishes(updated);
+  }, []);
+
+  const handleToggleFavorite = useCallback(async (dishId: string) => {
+    const updated = await toggleFavoriteDish(dishId);
     setUserDishes(updated);
   }, []);
 
@@ -214,6 +220,7 @@ function MainApp() {
             onNavigateToHistory={() => setActiveTab('historique')}
             onNavigateToSuggestions={() => setActiveTab('suggestions')}
             prefilledMeal={prefilledMeal}
+            onToggleFavorite={handleToggleFavorite}
           />
         )}
 
@@ -224,6 +231,7 @@ function MainApp() {
             onUpdateDish={handleUpdateDish}
             onDeleteDish={handleDeleteDish}
             onNavigateToSuggestions={() => setActiveTab('suggestions')}
+            onToggleFavorite={handleToggleFavorite}
           />
         )}
 

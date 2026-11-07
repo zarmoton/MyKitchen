@@ -21,6 +21,7 @@ interface PlatsScreenProps {
   onUpdateDish?: (dish: Dish) => void;
   onDeleteDish: (dishId: string) => void;
   onNavigateToSuggestions: () => void;
+  onToggleFavorite?: (dishId: string) => void;
 }
 
 export const PlatsScreen: React.FC<PlatsScreenProps> = ({
@@ -29,17 +30,28 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
   onUpdateDish,
   onDeleteDish,
   onNavigateToSuggestions,
+  onToggleFavorite,
 }) => {
   const [search, setSearch] = useState('');
   const [selectedOccasion, setSelectedOccasion] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedCuisine, setSelectedCuisine] = useState<string>('all');
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
+
+  const favoritesCount = useMemo(() => {
+    return userDishes.filter(d => d.isFavorite).length;
+  }, [userDishes]);
 
   // Filtered & sorted dishes
   const filteredDishes = useMemo(() => {
     const list = userDishes.filter(dish => {
+      // Favorites filter
+      if (onlyFavorites && !dish.isFavorite) {
+        return false;
+      }
+
       // Search
       if (search.trim()) {
         const query = search.toLowerCase();
@@ -94,7 +106,7 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
       if (!b.lastCookedDate) return 1;
       return new Date(a.lastCookedDate).getTime() - new Date(b.lastCookedDate).getTime();
     });
-  }, [userDishes, search, selectedOccasion, selectedType, selectedCuisine]);
+  }, [userDishes, search, selectedOccasion, selectedType, selectedCuisine, onlyFavorites]);
 
   const confirmDelete = useCallback(
     (dish: Dish) => {
@@ -121,9 +133,10 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         showLastCooked={true}
         onEdit={setEditingDish}
         onDelete={confirmDelete}
+        onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item.id) : undefined}
       />
     ),
-    [confirmDelete]
+    [confirmDelete, onToggleFavorite]
   );
 
   return (
@@ -162,8 +175,9 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
           {/* Tous */}
           <TouchableOpacity
-            style={[styles.filterChip, selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipActive]}
+            style={[styles.filterChip, !onlyFavorites && selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipActive]}
             onPress={() => {
+              setOnlyFavorites(false);
               setSelectedOccasion('all');
               setSelectedType('all');
               setSelectedCuisine('all');
@@ -172,10 +186,26 @@ export const PlatsScreen: React.FC<PlatsScreenProps> = ({
             <Text
               style={[
                 styles.filterChipText,
-                selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipTextActive,
+                !onlyFavorites && selectedOccasion === 'all' && selectedType === 'all' && selectedCuisine === 'all' && styles.filterChipTextActive,
               ]}
             >
               Tous ({userDishes.length})
+            </Text>
+          </TouchableOpacity>
+
+          {/* Favoris */}
+          <TouchableOpacity
+            style={[styles.filterChip, onlyFavorites && styles.filterChipActiveHeart]}
+            onPress={() => setOnlyFavorites(!onlyFavorites)}
+          >
+            <Ionicons
+              name={onlyFavorites ? 'heart' : 'heart-outline'}
+              size={13}
+              color={onlyFavorites ? '#FFFFFF' : '#EF4444'}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={[styles.filterChipText, onlyFavorites && styles.filterChipTextActive]}>
+              Favoris ({favoritesCount})
             </Text>
           </TouchableOpacity>
 
@@ -486,6 +516,10 @@ const styles = StyleSheet.create({
   filterChipActiveShabbat: {
     backgroundColor: colors.shabbat,
     borderColor: colors.shabbat,
+  },
+  filterChipActiveHeart: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
   },
   filterChipActiveTunisien: {
     backgroundColor: colors.badgeTunisien,

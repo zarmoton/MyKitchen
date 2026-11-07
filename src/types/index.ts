@@ -20,6 +20,7 @@ export interface Dish {
   createdAt?: number;
   sourceSuggestionId?: string;
   lastCookedDate?: string; // ISO date string of when this dish was last prepared/selected
+  isFavorite?: boolean; // User favorite dish
 }
 
 export type MealHistoryOccasion = 'semaine' | 'chabbat';

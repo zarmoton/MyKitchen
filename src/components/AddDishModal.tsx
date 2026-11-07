@@ -37,6 +37,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
   const [occasion, setOccasion] = useState<OccasionType>('semaine');
   const [cuisine, setCuisine] = useState<CuisineType>('classique');
   const [description, setDescription] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // Sync state whenever initialDish changes or modal opens
   useEffect(() => {
@@ -46,6 +47,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
       setOccasion(initialDish.occasion || 'semaine');
       setCuisine(initialDish.cuisine || 'classique');
       setDescription(initialDish.description || '');
+      setIsFavorite(!!initialDish.isFavorite);
     } else {
       resetForm();
     }
@@ -57,6 +59,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
     setOccasion('semaine');
     setCuisine('classique');
     setDescription('');
+    setIsFavorite(false);
   };
 
   const handleSave = () => {
@@ -76,6 +79,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
       isCustom: initialDish ? initialDish.isCustom : true,
       sourceSuggestionId: initialDish?.sourceSuggestionId,
       createdAt: initialDish?.createdAt || Date.now(),
+      isFavorite,
     };
 
     onSave(dishToSave);
@@ -232,6 +236,32 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Favori Toggle */}
+            <TouchableOpacity
+              style={[styles.favoriteBox, isFavorite && styles.favoriteBoxActive]}
+              onPress={() => setIsFavorite(!isFavorite)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={isFavorite ? 'heart' : 'heart-outline'}
+                size={22}
+                color={isFavorite ? '#EF4444' : colors.textMuted}
+              />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={[styles.favoriteBoxTitle, isFavorite && styles.favoriteBoxTitleActive]}>
+                  {isFavorite ? 'Plat favori ❤️' : 'Ajouter aux favoris'}
+                </Text>
+                <Text style={styles.favoriteBoxSubtitle}>
+                  Retrouvez ce plat rapidement en filtrant par favoris
+                </Text>
+              </View>
+              <Ionicons
+                name={isFavorite ? 'checkbox' : 'square-outline'}
+                size={20}
+                color={isFavorite ? '#EF4444' : colors.textMuted}
+              />
+            </TouchableOpacity>
 
             {/* Description / Notes */}
             <Text style={styles.label}>Notes ou variante (optionnel)</Text>
@@ -396,6 +426,33 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  favoriteBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardAlt,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+  },
+  favoriteBoxActive: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+  },
+  favoriteBoxTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  favoriteBoxTitleActive: {
+    color: '#DC2626',
+  },
+  favoriteBoxSubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   footer: {
     paddingHorizontal: 20,

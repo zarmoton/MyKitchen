@@ -13,6 +13,7 @@ export const INITIAL_USER_DISHES: Dish[] = [
     description: 'Le grand classique du vendredi soir avec légumes, viande et pois chiches.',
     sourceSuggestionId: 'sug-chab-1',
     isCustom: true,
+    isFavorite: true,
   },
   {
     id: 'init-camounilla',
@@ -63,6 +64,7 @@ export const INITIAL_USER_DISHES: Dish[] = [
     description: 'Le chef d’œuvre de Chabbat aux épinards frits confits, haricots blancs et viande.',
     sourceSuggestionId: 'sug-chab-4',
     isCustom: true,
+    isFavorite: true,
   },
   {
     id: 'init-pates-chabbat',
@@ -117,6 +119,7 @@ export const INITIAL_USER_DISHES: Dish[] = [
     description: 'Escalope panée dorée et ultra croustillante. Nécessite un accompagnement.',
     sourceSuggestionId: 'sug-schnitzel',
     isCustom: true,
+    isFavorite: true,
   },
   {
     id: 'init-hamburger',

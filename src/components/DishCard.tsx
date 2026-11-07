@@ -10,6 +10,7 @@ export interface DishCardProps {
   onPress?: ((dish: Dish) => void) | (() => void);
   onEdit?: ((dish: Dish) => void) | (() => void);
   onDelete?: ((dish: Dish) => void) | (() => void);
+  onToggleFavorite?: ((dish: Dish) => void) | (() => void);
   isSelected?: boolean;
   isSuggestionView?: boolean;
   isImportedInUserDishes?: boolean;
@@ -24,6 +25,7 @@ const DishCardComponent: React.FC<DishCardProps> = ({
   onPress,
   onEdit,
   onDelete,
+  onToggleFavorite,
   isSelected = false,
   isSuggestionView = false,
   isImportedInUserDishes = false,
@@ -94,6 +96,11 @@ const DishCardComponent: React.FC<DishCardProps> = ({
     if (onDelete) (onDelete as any)(dish);
   }, [onDelete, dish]);
 
+  const handleToggleFavorite = useCallback((e?: any) => {
+    e?.stopPropagation?.();
+    if (onToggleFavorite) (onToggleFavorite as any)(dish);
+  }, [onToggleFavorite, dish]);
+
   const handleToggleImport = useCallback(() => {
     if (onToggleImport) (onToggleImport as any)(dish);
   }, [onToggleImport, dish]);
@@ -126,15 +133,25 @@ const DishCardComponent: React.FC<DishCardProps> = ({
         <View style={styles.mainInfo}>
           {/* Title row with full wrapping title so names are NEVER cut off */}
           <View style={styles.titleRow}>
-            <Text
-              style={[
-                styles.name,
-                compact && styles.compactName,
-                isGreenHighlight && styles.greenName,
-              ]}
-            >
-              {dish.name}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+              <Text
+                style={[
+                  styles.name,
+                  compact && styles.compactName,
+                  isGreenHighlight && styles.greenName,
+                ]}
+              >
+                {dish.name}
+              </Text>
+              {dish.isFavorite && (
+                <Ionicons
+                  name="heart"
+                  size={compact ? 13 : 15}
+                  color="#EF4444"
+                  style={{ marginLeft: 5 }}
+                />
+              )}
+            </View>
             {isGreenHighlight && (
               <View style={[styles.greenCheckBadge, compact && styles.compactGreenCheckBadge]}>
                 <Ionicons name="checkmark-circle" size={compact ? 13 : 15} color={colors.addedGreenText} />
@@ -212,6 +229,20 @@ const DishCardComponent: React.FC<DishCardProps> = ({
 
         {/* Actions Row */}
         <View style={styles.actionsRow}>
+          {onToggleFavorite && (
+            <TouchableOpacity
+              style={[styles.actionIconBtn, compact && styles.compactActionIconBtn]}
+              onPress={handleToggleFavorite}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={dish.isFavorite ? 'heart' : 'heart-outline'}
+                size={compact ? 17 : 19}
+                color={dish.isFavorite ? '#EF4444' : colors.textMuted}
+              />
+            </TouchableOpacity>
+          )}
+
           {onEdit && (
             <TouchableOpacity
               style={[styles.actionIconBtn, compact && styles.compactActionIconBtn]}
